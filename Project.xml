@@ -123,7 +123,7 @@
 	<haxelib name="flxanimate"/>
 
 	<!-- Mobile Libraries -->
-	<haxelib name="extension-androidtools" if="android" />
+	<!-- extension-androidtools kaldırıldı: Lime içerisinde hazır olarak geliyor -->
 
 	<!-- Disable Discord IO Thread -->
 	<haxedef name="DISCORD_DISABLE_IO_THREAD" if="hxdiscord_rpc" />
