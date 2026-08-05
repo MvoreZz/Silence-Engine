@@ -32,7 +32,10 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: false
 
       - name: Setup Java JDK
         if: inputs.name == 'Android'
