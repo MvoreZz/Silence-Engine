@@ -34,6 +34,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
 
+      - name: Setup Java JDK
+        if: inputs.name == 'Android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Setup Haxe
         uses: krdlab/setup-haxe@master
         with:
@@ -59,7 +66,7 @@ jobs:
         run: |
           haxelib run lime config ANDROID_SDK $ANDROID_HOME
           haxelib run lime config ANDROID_NDK_ROOT ${{ steps.setup-ndk.outputs.ndk-path }}
-          haxelib run lime config JAVA_HOME $JAVA_HOME_17_arm64
+          haxelib run lime config JAVA_HOME $JAVA_HOME
           haxelib run lime config ANDROID_SETUP true
 
       - name: Compile
@@ -82,3 +89,4 @@ jobs:
           name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
           if-no-files-found: error
+          
