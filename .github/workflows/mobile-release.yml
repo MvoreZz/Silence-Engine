@@ -1,4 +1,4 @@
-name: Mobile + Release
+Name: Mobile + Release
 on: workflow_dispatch
 
 permissions:
@@ -7,7 +7,6 @@ permissions:
 
 env:
   PROJECT_NAME: PsychEngine
-  REPO_PATH: kittycathy233/FNF-PsychEngine-Mobile-1.0.4
 
 jobs:
   get-commit-hash:
@@ -15,23 +14,12 @@ jobs:
     outputs:
       commit_hash: ${{ steps.get_commit_hash.outputs.COMMIT_HASH }}
     steps:
-      - name: Check Repository
-        run: |
-          echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
-          echo "REPO_PATH: ${{ env.REPO_PATH }}"
-          if [[ "$GITHUB_REPOSITORY" != "${{ env.REPO_PATH }}" ]]; then
-            echo "Doesn't seem to be correct, returning SIGABRT..."
-            exit 6
-          else
-            echo "Seems to be correct..."
-          fi
-
       - name: Get latest commit hash
         id: get_commit_hash
         run: |
           commit_hash=${GITHUB_SHA::7}
           echo "Latest commit hash is $commit_hash"
-          echo "::set-output name=COMMIT_HASH::$commit_hash"
+          echo "COMMIT_HASH=$commit_hash" >> $GITHUB_OUTPUT
 
   build:
     name: ${{ matrix.name }}
@@ -92,3 +80,4 @@ jobs:
           files: |
             /home/runner/*.apk
             /home/runner/*.zip
+            
