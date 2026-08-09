@@ -34,7 +34,7 @@ class SustainSplash extends FlxSprite
 			visible = strumNote.visible;
 			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 
-			// Sadece hold animasyonundayken ve strum static'e donunce oldur
+			// Kill it only when in the hold animation and upon returning to strum static
 			if (animation.curAnim != null
 				&& animation.curAnim.name == "hold"
 				&& strumNote.animation.curAnim != null
@@ -45,7 +45,7 @@ class SustainSplash extends FlxSprite
 		}
 		else if (strumNote != null && ending)
 		{
-			// End anim sirasinda sadece pozisyonu takip et, static yuzunden oldurme
+			// During the end animation just track the position; dont get killed because you're standing still
 			setPosition(strumNote.x, strumNote.y);
 			visible = strumNote.visible;
 		}
