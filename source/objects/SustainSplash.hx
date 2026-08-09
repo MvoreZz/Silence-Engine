@@ -8,6 +8,7 @@ class SustainSplash extends FlxSprite
 	public var strumNote:StrumNote;
 
 	var timer:FlxTimer;
+	var ending:Bool = false;
 
 	public function new():Void
 	{
@@ -19,34 +20,51 @@ class SustainSplash extends FlxSprite
 
 		animation.addByPrefix('hold', 'holdCover0', 24, true);
 		animation.addByPrefix('end', 'holdCoverEnd0', 24, false);
-		if(!animation.getNameList().contains("hold")) trace("Hold splash is missing 'hold' anim!");
+		if (!animation.getNameList().contains("hold"))
+			trace("Hold splash is missing 'hold' anim!");
 	}
 
-	override function update(elapsed)
+	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
 
-		if (strumNote != null)
+		if (strumNote != null && !ending)
 		{
 			setPosition(strumNote.x, strumNote.y);
 			visible = strumNote.visible;
 			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 
-			if (animation.curAnim?.name == "hold" && strumNote.animation.curAnim?.name == "static")
+			// Sadece hold animasyonundayken ve strum static'e donunce oldur
+			if (animation.curAnim != null
+				&& animation.curAnim.name == "hold"
+				&& strumNote.animation.curAnim != null
+				&& strumNote.animation.curAnim.name == "static")
 			{
-				x = -50000;
-				kill();
+				forceKill();
 			}
+		}
+		else if (strumNote != null && ending)
+		{
+			// End anim sirasinda sadece pozisyonu takip et, static yuzunden oldurme
+			setPosition(strumNote.x, strumNote.y);
+			visible = strumNote.visible;
 		}
 	}
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
+		ending = false;
+		animation.finishCallback = null;
+
+		if (timer != null)
+		{
+			timer.cancel();
+			timer = null;
+		}
+
 		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
 		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
-		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * .001;
-
-		var tailEnd:Note = !daNote.isSustainNote ? daNote.tail[daNote.tail.length - 1] : daNote.parent.tail[daNote.parent.tail.length - 1];
+		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
 
 		animation.play('hold', true, false, 0);
 		if (animation.curAnim != null)
@@ -58,41 +76,72 @@ class SustainSplash extends FlxSprite
 
 		if (daNote.shader != null)
 		{
-			shader = new objects.NoteSplash.PixelSplashShaderRef().shader;
-			shader.data.r.value = daNote.shader.data.r.value;
-			shader.data.g.value = daNote.shader.data.g.value;
-			shader.data.b.value = daNote.shader.data.b.value;
-			shader.data.mult.value = daNote.shader.data.mult.value;
+			try
+			{
+				shader = new objects.NoteSplash.PixelSplashShaderRef().shader;
+				shader.data.r.value = daNote.shader.data.r.value;
+				shader.data.g.value = daNote.shader.data.g.value;
+				shader.data.b.value = daNote.shader.data.b.value;
+				shader.data.mult.value = daNote.shader.data.mult.value;
+			}
+			catch (e:Dynamic) {}
 		}
 
 		strumNote = strum;
 		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 		offset.set(PlayState.isPixelStage ? 112.5 : 106.25, 100);
+		visible = true;
 
-		if (timer != null)
-			timer.cancel();
+		// Opponent hit veya alpha 0 ise hic end oynatma
+		if (daNote.hitByOpponent || ClientPrefs.data.holdSplashAlpha == 0)
+			return;
 
-		if (!daNote.hitByOpponent && ClientPrefs.data.holdSplashAlpha != 0)
-			timer = new FlxTimer().start(timeThingy, (idk:FlxTimer) ->
+		timer = new FlxTimer().start(timeThingy, function(_)
+		{
+			if (animation == null)
 			{
-				if (!(daNote.isSustainNote ? daNote.parent.noteSplashData.disabled : daNote.noteSplashData.disabled) && animation != null)
-				{
-					alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
-					animation.play('end', true, false, 0);
-					if (animation.curAnim != null)
-					{
-						animation.curAnim.looped = false;
-						animation.curAnim.frameRate = 24;
-					}
-					clipRect = null;
-					animation.finishCallback = (idkEither:Dynamic) ->
-					{
-						kill();
-					}
-					return;
-				}
-				kill();
-			});
+				forceKill();
+				return;
+			}
+
+			final disabled:Bool = daNote.isSustainNote
+				? (daNote.parent != null && daNote.parent.noteSplashData.disabled)
+				: daNote.noteSplashData.disabled;
+
+			if (disabled)
+			{
+				forceKill();
+				return;
+			}
+
+			ending = true;
+			alpha = ClientPrefs.data.holdSplashAlpha - (1 - (strumNote != null ? strumNote.alpha : 1));
+			clipRect = null;
+			animation.play('end', true, false, 0);
+			if (animation.curAnim != null)
+			{
+				animation.curAnim.looped = false;
+				animation.curAnim.frameRate = 24;
+			}
+			animation.finishCallback = function(__)
+			{
+				forceKill();
+			};
+		});
 	}
-          }
-            
+
+	function forceKill():Void
+	{
+		ending = false;
+		if (timer != null)
+		{
+			timer.cancel();
+			timer = null;
+		}
+		animation.finishCallback = null;
+		visible = false;
+		alpha = 0;
+		x = -50000;
+		kill();
+	}
+}
