@@ -9,12 +9,12 @@ class SustainSplash extends FlxSprite
 
 	var timer:FlxTimer;
 	var ending:Bool = false;
+	var activeSplash:Bool = false;
 
 	public function new():Void
 	{
 		super();
-
-		x = -50000;
+		killSplash();
 
 		frames = Paths.getSparrowAtlas('holdCovers/holdCover-' + ClientPrefs.data.holdSkin);
 
@@ -28,43 +28,44 @@ class SustainSplash extends FlxSprite
 	{
 		super.update(elapsed);
 
-		if (strumNote != null && !ending)
+		if (!activeSplash || strumNote == null)
+			return;
+
+		setPosition(strumNote.x, strumNote.y);
+		visible = strumNote.visible && activeSplash;
+
+		if (!ending)
 		{
-			setPosition(strumNote.x, strumNote.y);
-			visible = strumNote.visible;
 			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 
-			// Kill it only when in the hold animation and upon returning to strum static
 			if (animation.curAnim != null
 				&& animation.curAnim.name == "hold"
 				&& strumNote.animation.curAnim != null
 				&& strumNote.animation.curAnim.name == "static")
 			{
-				forceKill();
+				killSplash();
 			}
 		}
-		else if (strumNote != null && ending)
+		else
 		{
-			// During the end animation just track the position; dont get killed because you're standing still
-			setPosition(strumNote.x, strumNote.y);
-			visible = strumNote.visible;
+			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 		}
 	}
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
-		ending = false;
-		animation.finishCallback = null;
-
-		if (timer != null)
-		{
-			timer.cancel();
-			timer = null;
-		}
+		killSplash();
 
 		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
 		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
 		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
+
+		if (lengthToGet <= 0)
+			return;
+
+		strumNote = strum;
+		ending = false;
+		activeSplash = true;
 
 		animation.play('hold', true, false, 0);
 		if (animation.curAnim != null)
@@ -72,6 +73,7 @@ class SustainSplash extends FlxSprite
 			animation.curAnim.frameRate = frameRate;
 			animation.curAnim.looped = true;
 		}
+
 		clipRect = new flixel.math.FlxRect(0, !PlayState.isPixelStage ? 0 : -210, frameWidth, frameHeight);
 
 		if (daNote.shader != null)
@@ -87,20 +89,19 @@ class SustainSplash extends FlxSprite
 			catch (e:Dynamic) {}
 		}
 
-		strumNote = strum;
-		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
+		setPosition(strum.x, strum.y);
 		offset.set(PlayState.isPixelStage ? 112.5 : 106.25, 100);
+		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strum.alpha);
 		visible = true;
 
-		// Opponent hit veya alpha 0 ise hic end oynatma
 		if (daNote.hitByOpponent || ClientPrefs.data.holdSplashAlpha == 0)
 			return;
 
 		timer = new FlxTimer().start(timeThingy, function(_)
 		{
-			if (animation == null)
+			if (!activeSplash || animation == null)
 			{
-				forceKill();
+				killSplash();
 				return;
 			}
 
@@ -110,12 +111,11 @@ class SustainSplash extends FlxSprite
 
 			if (disabled)
 			{
-				forceKill();
+				killSplash();
 				return;
 			}
 
 			ending = true;
-			alpha = ClientPrefs.data.holdSplashAlpha - (1 - (strumNote != null ? strumNote.alpha : 1));
 			clipRect = null;
 			animation.play('end', true, false, 0);
 			if (animation.curAnim != null)
@@ -125,23 +125,39 @@ class SustainSplash extends FlxSprite
 			}
 			animation.finishCallback = function(__)
 			{
-				forceKill();
+				killSplash();
 			};
 		});
 	}
 
-	function forceKill():Void
+	function killSplash():Void
 	{
+		activeSplash = false;
 		ending = false;
 		if (timer != null)
 		{
 			timer.cancel();
 			timer = null;
 		}
-		animation.finishCallback = null;
+		if (animation != null)
+			animation.finishCallback = null;
 		visible = false;
 		alpha = 0;
 		x = -50000;
+		y = -50000;
+		strumNote = null;
+		clipRect = null;
 		kill();
+	}
+
+	override function revive()
+	{
+		super.revive();
+		visible = false;
+		alpha = 0;
+		x = -50000;
+		y = -50000;
+		activeSplash = false;
+		ending = false;
 	}
 }
