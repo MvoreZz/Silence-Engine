@@ -167,6 +167,7 @@ class PlayState extends MusicBeatState
 	public var opponentStrums:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
 	public var playerStrums:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
 	public var grpNoteSplashes:FlxTypedGroup<NoteSplash> = new FlxTypedGroup<NoteSplash>();
+	public var grpHoldSplashes:FlxTypedGroup<SustainSplash> = new FlxTypedGroup<SustainSplash>();
 
 	public var camZooming:Bool = false;
 	public var camZoomingMult:Float = 1;
@@ -528,6 +529,7 @@ class PlayState extends MusicBeatState
 		generateSong();
 
 		noteGroup.add(grpNoteSplashes);
+		noteGroup.add(grpHoldSplashes);
 
 		camFollow = new FlxObject();
 		camFollow.setPosition(camPos.x, camPos.y);
@@ -662,6 +664,13 @@ class PlayState extends MusicBeatState
 		var splash:NoteSplash = new NoteSplash();
 		grpNoteSplashes.add(splash);
 		splash.alpha = 0.000001; //cant make it invisible or it won't allow precaching
+
+		// Hold Splash precache
+		SustainSplash.startCrochet = Conductor.stepCrochet;
+		SustainSplash.frameRate = Math.floor(24 / 100 * SONG.bpm);
+		var holdSplash:SustainSplash = new SustainSplash();
+		holdSplash.alpha = 0.0001;
+		grpHoldSplashes.add(holdSplash);
 
 		#if !android
 		addTouchPad('NONE', 'P');
@@ -3082,6 +3091,14 @@ class PlayState extends MusicBeatState
 		if(opponentVocals.length <= 0) vocals.volume = 1;
 		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 		note.hitByOpponent = true;
+
+		// Hold Splash for opponent (on note head if it has a sustain tail)
+		if (!note.isSustainNote && note.tail.length > 0 && !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
+		{
+			var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
+			holdSplash.setupSusSplash(opponentStrums.members[note.noteData], note, playbackRate);
+			grpHoldSplashes.add(holdSplash);
+		}
 		
 		stagesFunc(function(stage:BaseStage) stage.opponentNoteHit(note));
 		var result:Dynamic = callOnLuas('opponentNoteHit', [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
@@ -3161,6 +3178,14 @@ class PlayState extends MusicBeatState
 				combo++;
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
+
+				// Hold Splash (spawn on note head if it has a sustain tail)
+				if (note.tail.length > 0 && !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
+				{
+					var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
+					holdSplash.setupSusSplash(playerStrums.members[note.noteData], note, playbackRate);
+					grpHoldSplashes.add(holdSplash);
+				}
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;
