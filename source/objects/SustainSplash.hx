@@ -14,7 +14,10 @@ class SustainSplash extends FlxSprite
 	public function new():Void
 	{
 		super();
-		killSplash();
+
+		x = -50000;
+		visible = false;
+		alpha = 0;
 
 		frames = Paths.getSparrowAtlas('holdCovers/holdCover-' + ClientPrefs.data.holdSkin);
 
@@ -43,7 +46,7 @@ class SustainSplash extends FlxSprite
 				&& strumNote.animation.curAnim != null
 				&& strumNote.animation.curAnim.name == "static")
 			{
-				killSplash();
+				finishSplash();
 			}
 		}
 		else
@@ -54,7 +57,8 @@ class SustainSplash extends FlxSprite
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
-		killSplash();
+		// Just reset the state; do NOT call kill() (recycle might have just revived it)
+		resetSplashState();
 
 		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
 		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
@@ -101,7 +105,7 @@ class SustainSplash extends FlxSprite
 		{
 			if (!activeSplash || animation == null)
 			{
-				killSplash();
+				finishSplash();
 				return;
 			}
 
@@ -111,7 +115,7 @@ class SustainSplash extends FlxSprite
 
 			if (disabled)
 			{
-				killSplash();
+				finishSplash();
 				return;
 			}
 
@@ -125,15 +129,15 @@ class SustainSplash extends FlxSprite
 			}
 			animation.finishCallback = function(__)
 			{
-				killSplash();
+				finishSplash();
 			};
 		});
 	}
 
-	function killSplash():Void
+	function resetSplashState():Void
 	{
-		activeSplash = false;
 		ending = false;
+		activeSplash = false;
 		if (timer != null)
 		{
 			timer.cancel();
@@ -141,18 +145,24 @@ class SustainSplash extends FlxSprite
 		}
 		if (animation != null)
 			animation.finishCallback = null;
+		strumNote = null;
+		clipRect = null;
+	}
+
+	function finishSplash():Void
+	{
+		resetSplashState();
 		visible = false;
 		alpha = 0;
 		x = -50000;
 		y = -50000;
-		strumNote = null;
-		clipRect = null;
 		kill();
 	}
 
 	override function revive()
 	{
 		super.revive();
+		// Ensure the old image doesn't appear immediately upon recycling
 		visible = false;
 		alpha = 0;
 		x = -50000;
