@@ -672,10 +672,9 @@ class PlayState extends MusicBeatState
 		holdSplash.alpha = 0.0001;
 		grpHoldSplashes.add(holdSplash);
 
-		#if !android
+		// P-Slice style pause button (top-right P)
 		addTouchPad('NONE', 'P');
 		addTouchPadCamera();
-		#end
 
 		super.create();
 		Paths.clearUnusedMemory();
@@ -2446,7 +2445,8 @@ class PlayState extends MusicBeatState
 	public var transitioning = false;
 	public function endSong()
 	{
-		mobileControls.instance.visible = #if !android touchPad.visible = #end false;
+		mobileControls.instance.visible = false;
+		if (touchPad != null) touchPad.visible = false;
 		//Should kill you if you tried to cheat
 		if(!startingSong)
 		{
