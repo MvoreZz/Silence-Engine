@@ -154,7 +154,7 @@ class ClientPrefs {
 
 		'accept'		=> [A],
 		'back'			=> [B],
-		'pause'			=> [#if android NONE #else P #end],
+		'pause'			=> [P],
 		'reset'			=> [NONE]
 	];
 	public static var defaultKeys:Map<String, Array<FlxKey>> = null;
