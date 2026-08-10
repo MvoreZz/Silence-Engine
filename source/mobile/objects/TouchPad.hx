@@ -82,7 +82,30 @@ class TouchPad extends MobileInputManager implements IMobileControls
 	{
 		super();
 
-		if (DPad != "NONE")
+		if (DPad == "VSLICE")
+		{
+			// Bottom-centered arrow pad (like official V-Slice / screenshot)
+			final cy:Float = FlxG.height - 150;
+			final mid:Float = FlxG.width / 2;
+			final gap:Float = 160;
+			final sz:Float = 0.42; // larger than default pad buttons
+
+			buttonLeft = createButton(mid - gap * 1.5 - 66, cy, 'left', 0xFFFFFFFF, buttonLeft.IDs);
+			buttonDown = createButton(mid - gap * 0.5 - 66, cy, 'down', 0xFFFFFFFF, buttonDown.IDs);
+			buttonUp = createButton(mid + gap * 0.5 - 66, cy, 'up', 0xFFFFFFFF, buttonUp.IDs);
+			buttonRight = createButton(mid + gap * 1.5 - 66, cy, 'right', 0xFFFFFFFF, buttonRight.IDs);
+
+			for (btn in [buttonLeft, buttonDown, buttonUp, buttonRight])
+			{
+				btn.scale.set(sz, sz);
+				btn.updateHitbox();
+				btn.updateLabelPosition();
+				btn.bounds.makeGraphic(Std.int(btn.width - 30), Std.int(btn.height - 30), FlxColor.TRANSPARENT);
+				btn.centerBounds();
+				add(btn);
+			}
+		}
+		else if (DPad != "NONE")
 		{
 			if (!MobileData.dpadModes.exists(DPad))
 				throw Language.getPhrase('touchpad_dpadmode_missing', 'The touchPad dpadMode "{1}" doesn\'t exist.', [DPad]);
