@@ -22,12 +22,6 @@
 
 package mobile.objects;
 
-// I wanted to delete this but i have no idea how i coded MobileControlSelectSubState so idk how to implement IMobileControls into it... yet...
-
-/**
- * ...
- * @author: Karim Akra
- */
 class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 {
 	public var touchPad:TouchPad = new TouchPad('NONE', 'NONE', NONE);
@@ -38,25 +32,28 @@ class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 		super();
 		MobileData.forcedMode = forceType;
 
-		// V-Slice bottom arrow controls (toggle in Mobile Options)
+		// V-Slice: notes/strums are the targets — use hitbox zones under those strums
 		if (ClientPrefs.data.vsliceMobileControls)
 		{
 			var extraAction = MobileData.extraActions.get(ClientPrefs.data.extraButtons);
 			if (!extra)
 				extraAction = NONE;
-			touchPad = new TouchPad('VSLICE', 'NONE', extraAction);
-			touchPad = MobileData.setButtonsColors(touchPad);
-			add(touchPad);
+			hitbox = new Hitbox(extraAction);
+			hitbox = MobileData.setButtonsColors(hitbox);
+			add(hitbox);
+			alpha = ClientPrefs.data.controlsAlpha;
+			return;
 		}
-		else switch (MobileData.mode)
+
+		switch (MobileData.mode)
 		{
-			case 0: // RIGHT_FULL
+			case 0:
 				initControler(0, extra);
-			case 1: // LEFT_FULL
+			case 1:
 				initControler(1, extra);
-			case 2: // CUSTOM
+			case 2:
 				initControler(2, extra);
-			case 3: // HITBOX
+			case 3:
 				initControler(3, extra);
 		}
 		alpha = ClientPrefs.data.controlsAlpha;
