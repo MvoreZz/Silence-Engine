@@ -66,7 +66,20 @@ class Hitbox extends MobileInputManager implements IMobileControls
 				storedButtonsIDs.set(button, Reflect.getProperty(field, 'IDs'));
 		}
 
-		switch (extraMode)
+		// V-Slice style: centered narrow columns under the arrows
+		if (ClientPrefs.data.vsliceMobileControls)
+		{
+			final SCREEN_MIDDLE = FlxG.width / 2;
+			final ARROW_HITBOX_SIZE = 270;
+			final ARROW_DISTANCE = 220;
+			final ARROW_SPREAD = 30;
+
+			add(buttonLeft = createHint(SCREEN_MIDDLE - (ARROW_DISTANCE * 1.5) - (ARROW_HITBOX_SIZE / 2) - ARROW_SPREAD, 0, ARROW_HITBOX_SIZE, FlxG.height, 0xFFC24B99));
+			add(buttonDown = createHint(SCREEN_MIDDLE - (ARROW_DISTANCE * 0.5) - (ARROW_HITBOX_SIZE / 2) - ARROW_SPREAD, 0, ARROW_HITBOX_SIZE, FlxG.height, 0xFF00FFFF));
+			add(buttonUp = createHint(SCREEN_MIDDLE + (ARROW_DISTANCE * 0.5) - (ARROW_HITBOX_SIZE / 2) + ARROW_SPREAD, 0, ARROW_HITBOX_SIZE, FlxG.height, 0xFF12FA05));
+			add(buttonRight = createHint(SCREEN_MIDDLE + (ARROW_DISTANCE * 1.5) - (ARROW_HITBOX_SIZE / 2) + ARROW_SPREAD, 0, ARROW_HITBOX_SIZE, FlxG.height, 0xFFF9393F));
+		}
+		else switch (extraMode)
 		{
 			case NONE:
 				add(buttonLeft = createHint(0, 0, Std.int(FlxG.width / 4), FlxG.height, 0xFFC24B99));
