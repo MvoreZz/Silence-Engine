@@ -16,6 +16,7 @@ import states.TitleState;
 	public var screensaver:Bool = false;
 	public var wideScreen:Bool = false;
 	public var hitboxType:String = "Gradient";
+	public var vsliceMobileControls:Bool = false; // V-Slice style centered arrow hitboxes
 	public var popUpRating:Bool = true;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
