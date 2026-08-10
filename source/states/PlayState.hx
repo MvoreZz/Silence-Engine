@@ -1012,6 +1012,7 @@ class PlayState extends MusicBeatState
 			canPause = true;
 			generateStaticArrows(0);
 			generateStaticArrows(1);
+			applyVsliceStrumLayout();
 			for (i in 0...playerStrums.length) {
 				setOnScripts('defaultPlayerStrumX' + i, playerStrums.members[i].x);
 				setOnScripts('defaultPlayerStrumY' + i, playerStrums.members[i].y);
@@ -1569,6 +1570,44 @@ class PlayState extends MusicBeatState
 	}
 
 	public var skipArrowStartTween:Bool = false; //for lua
+
+	/** V-Slice mobile: player strums at bottom (tap them), opponent top-left */
+	function applyVsliceStrumLayout():Void
+	{
+		if (!ClientPrefs.data.vsliceMobileControls)
+			return;
+
+		final slotW:Float = FlxG.width * 0.22;
+		final gap:Float = FlxG.width * 0.02;
+		final total:Float = slotW * 4 + gap * 3;
+		final startX:Float = (FlxG.width - total) / 2;
+		final playerY:Float = FlxG.height - slotW - 25;
+
+		for (i in 0...playerStrums.length)
+		{
+			var s:StrumNote = playerStrums.members[i];
+			if (s == null) continue;
+			s.scale.x *= 1.35;
+			s.scale.y *= 1.35;
+			s.updateHitbox();
+			s.x = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
+			s.y = playerY + (slotW - s.height) * 0.5;
+			s.downScroll = true;
+		}
+
+		for (i in 0...opponentStrums.length)
+		{
+			var s:StrumNote = opponentStrums.members[i];
+			if (s == null) continue;
+			s.scale.x *= 0.85;
+			s.scale.y *= 0.85;
+			s.updateHitbox();
+			s.x = 30 + i * (s.width + 12);
+			s.y = 40;
+			s.downScroll = false;
+		}
+	}
+
 	private function generateStaticArrows(player:Int):Void
 	{
 		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
