@@ -79,6 +79,11 @@ class MobileOptionsSubState extends BaseOptionsMenu
 			addOption(option);
 		}
 
+		option = new Option('V-Slice Mobile Controls',
+			'If enabled, uses V-Slice style centered hitboxes under the arrows\ninstead of full-screen 4-lane hitboxes. (Hitbox mode only)',
+			'vsliceMobileControls', BOOL);
+		addOption(option);
+
 		option = new Option('Dynamic Controls Color',
 			'If checked, the mobile controls color will be set to the notes color in your settings.\n(have effect during gameplay only)', 'dynamicColors',
 			BOOL);
