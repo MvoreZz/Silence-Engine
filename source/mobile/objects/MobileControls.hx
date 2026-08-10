@@ -37,7 +37,18 @@ class MobileControls extends FlxTypedSpriteGroup<MobileInputManager>
 	{
 		super();
 		MobileData.forcedMode = forceType;
-		switch (MobileData.mode)
+
+		// V-Slice bottom arrow controls (toggle in Mobile Options)
+		if (ClientPrefs.data.vsliceMobileControls)
+		{
+			var extraAction = MobileData.extraActions.get(ClientPrefs.data.extraButtons);
+			if (!extra)
+				extraAction = NONE;
+			touchPad = new TouchPad('VSLICE', 'NONE', extraAction);
+			touchPad = MobileData.setButtonsColors(touchPad);
+			add(touchPad);
+		}
+		else switch (MobileData.mode)
 		{
 			case 0: // RIGHT_FULL
 				initControler(0, extra);
