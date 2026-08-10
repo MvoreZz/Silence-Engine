@@ -80,7 +80,7 @@ class MobileOptionsSubState extends BaseOptionsMenu
 		}
 
 		option = new Option('V-Slice Mobile Controls',
-			'If enabled, shows V-Slice style arrow buttons at the bottom of the screen\nto hit notes (like official mobile). Replaces current control scheme while on.',
+			'If enabled, moves player note arrows to the bottom (V-Slice style).\nTap those arrows to hit notes.',
 			'vsliceMobileControls', BOOL);
 		addOption(option);
 
