@@ -80,7 +80,7 @@ class MobileOptionsSubState extends BaseOptionsMenu
 		}
 
 		option = new Option('V-Slice Mobile Controls',
-			'If enabled, uses V-Slice style centered hitboxes under the arrows\ninstead of full-screen 4-lane hitboxes. (Hitbox mode only)',
+			'If enabled, shows V-Slice style arrow buttons at the bottom of the screen\nto hit notes (like official mobile). Replaces current control scheme while on.',
 			'vsliceMobileControls', BOOL);
 		addOption(option);
 
