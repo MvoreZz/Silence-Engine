@@ -1577,7 +1577,7 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player: screenshot gibi yayilmis aralik
+		// Player
 		final slotW:Float = FlxG.width * 0.17;
 		final gap:Float = FlxG.width * 0.04;
 		final total:Float = slotW * 4 + gap * 3;
@@ -1596,7 +1596,7 @@ class PlayState extends MusicBeatState
 			s.downScroll = true;
 		}
 
-		// Rakip oklari (strum) ve gelen notalar gizlenecek
+		// Opponent arrows (strum) and incoming notes will be hidden
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
