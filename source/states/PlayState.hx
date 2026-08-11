@@ -1577,8 +1577,8 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		final slotW:Float = FlxG.width * 0.18;
-		final gap:Float = FlxG.width * 0.025;
+		final slotW:Float = FlxG.width * 0.165;
+		final gap:Float = FlxG.width * 0.01; // daha siki oyuncu araligi
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
 		final playerY:Float = FlxG.height - slotW - 30;
@@ -1599,10 +1599,11 @@ class PlayState extends MusicBeatState
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 0.7;
-			s.scale.y *= 0.7;
+			// Nota boyutuyla eslesmesi icin daha kucuk
+			s.scale.x *= 0.55;
+			s.scale.y *= 0.55;
 			s.updateHitbox();
-			s.x = 30 + i * (s.width + 10);
+			s.x = 30 + i * (s.width + 8);
 			s.y = 40;
 			s.downScroll = false;
 		}
