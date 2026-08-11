@@ -1577,18 +1577,18 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		final slotW:Float = FlxG.width * 0.22;
-		final gap:Float = FlxG.width * 0.02;
+		final slotW:Float = FlxG.width * 0.18;
+		final gap:Float = FlxG.width * 0.025;
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
-		final playerY:Float = FlxG.height - slotW - 25;
+		final playerY:Float = FlxG.height - slotW - 30;
 
 		for (i in 0...playerStrums.length)
 		{
 			var s:StrumNote = playerStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 1.35;
-			s.scale.y *= 1.35;
+			s.scale.x *= 1.05;
+			s.scale.y *= 1.05;
 			s.updateHitbox();
 			s.x = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
 			s.y = playerY + (slotW - s.height) * 0.5;
@@ -1599,10 +1599,10 @@ class PlayState extends MusicBeatState
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 0.85;
-			s.scale.y *= 0.85;
+			s.scale.x *= 0.7;
+			s.scale.y *= 0.7;
 			s.updateHitbox();
-			s.x = 30 + i * (s.width + 12);
+			s.x = 30 + i * (s.width + 10);
 			s.y = 40;
 			s.downScroll = false;
 		}
