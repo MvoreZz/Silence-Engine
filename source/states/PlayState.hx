@@ -1577,36 +1577,36 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player: orta iki ayni, sol/sag biraz iceri
-		final slotW:Float = FlxG.width * 0.17;
-		final gap:Float = FlxG.width * 0.04;
+		// Player: biraz kucuk; sol+asagi sola, yukari+sag saga
+		final slotW:Float = FlxG.width * 0.15;
+		final gap:Float = FlxG.width * 0.035;
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
-		final playerY:Float = FlxG.height - slotW - 20;
-		final outerPull:Float = FlxG.width * 0.025; // sol ve sagi iceri cek
+		final playerY:Float = FlxG.height - slotW - 25;
+		final sideShift:Float = FlxG.width * 0.02;
 
 		for (i in 0...playerStrums.length)
 		{
 			var s:StrumNote = playerStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 1.05;
-			s.scale.y *= 1.05;
+			s.scale.x *= 0.92;
+			s.scale.y *= 0.92;
 			s.updateHitbox();
 			var px:Float = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
-			if (i == 0) px += outerPull; // sol
-			if (i == 3) px -= outerPull; // sag
+			if (i == 0 || i == 1) px -= sideShift; // sol, asagi -> sola
+			if (i == 2 || i == 3) px += sideShift; // yukari, sag -> saga
 			s.x = px;
 			s.y = playerY + (slotW - s.height) * 0.5;
 			s.downScroll = true;
 		}
 
-		// Rakip strum oklari sol ustte gorunur (kucuk)
+		// Rakip strum sol ust (kucuk), hold splash kapali
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 0.55;
-			s.scale.y *= 0.55;
+			s.scale.x *= 0.48;
+			s.scale.y *= 0.48;
 			s.updateHitbox();
 			s.x = 30 + i * (s.width + 8);
 			s.y = 40;
@@ -1883,11 +1883,19 @@ class PlayState extends MusicBeatState
 				notes.insert(0, dunceNote);
 				dunceNote.spawned = true;
 
-				// V-Slice: sadece rakibe GELEN notalari gizle (strumlar durur)
-				if (ClientPrefs.data.vsliceMobileControls && !dunceNote.mustPress)
+				if (ClientPrefs.data.vsliceMobileControls)
 				{
-					dunceNote.visible = false;
-					dunceNote.alpha = 0;
+					// Her iki taraf nota boyutu biraz kucuk
+					dunceNote.scale.x *= 0.85;
+					dunceNote.scale.y *= 0.85;
+					dunceNote.updateHitbox();
+
+					// Sadece rakibe GELEN notalari gizle (strumlar durur)
+					if (!dunceNote.mustPress)
+					{
+						dunceNote.visible = false;
+						dunceNote.alpha = 0;
+					}
 				}
 
 				callOnLuas('onSpawnNote', [notes.members.indexOf(dunceNote), dunceNote.noteData, dunceNote.noteType, dunceNote.isSustainNote, dunceNote.strumTime]);
@@ -3158,7 +3166,10 @@ class PlayState extends MusicBeatState
 		note.hitByOpponent = true;
 
 		// Hold Splash for opponent (on note head if it has a sustain tail)
-		if (!note.isSustainNote && note.tail.length > 0 && !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
+		// Rakip hold splash kapali (V-Slice sol ust)
+		if (!ClientPrefs.data.vsliceMobileControls
+			&& !note.isSustainNote && note.tail.length > 0
+			&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 		{
 			var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
 			holdSplash.setupSusSplash(opponentStrums.members[note.noteData], note, playbackRate);
