@@ -1577,24 +1577,27 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player: biraz kucuk; sol+asagi sola, yukari+sag saga
-		final slotW:Float = FlxG.width * 0.15;
-		final gap:Float = FlxG.width * 0.035;
+		// Player: notalar biraz buyuk; araliklar daha yakin (orta bosluk kalsin)
+		final slotW:Float = FlxG.width * 0.155;
+		final gap:Float = FlxG.width * 0.018; // asagi-yukari daha yakin
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
 		final playerY:Float = FlxG.height - slotW - 25;
-		final sideShift:Float = FlxG.width * 0.02;
+		// sol->asagi ve yukari->sag biraz daha yakin
+		final pairPull:Float = FlxG.width * 0.012;
 
 		for (i in 0...playerStrums.length)
 		{
 			var s:StrumNote = playerStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 0.92;
-			s.scale.y *= 0.92;
+			s.scale.x *= 0.95;
+			s.scale.y *= 0.95;
 			s.updateHitbox();
 			var px:Float = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
-			if (i == 0 || i == 1) px -= sideShift; // sol, asagi -> sola
-			if (i == 2 || i == 3) px += sideShift; // yukari, sag -> saga
+			if (i == 0) px += pairPull; // sol -> asagiya yaklas
+			if (i == 1) px -= pairPull * 0.3;
+			if (i == 2) px += pairPull * 0.3;
+			if (i == 3) px -= pairPull; // sag -> yukariya yaklas
 			s.x = px;
 			s.y = playerY + (slotW - s.height) * 0.5;
 			s.downScroll = true;
@@ -1885,14 +1888,31 @@ class PlayState extends MusicBeatState
 
 				if (ClientPrefs.data.vsliceMobileControls)
 				{
-					// Her iki taraf nota boyutu biraz kucuk
-					dunceNote.scale.x *= 0.85;
-					dunceNote.scale.y *= 0.85;
-					dunceNote.updateHitbox();
-
-					// Sadece rakibe GELEN notalari gizle (strumlar durur)
-					if (!dunceNote.mustPress)
+					if (dunceNote.mustPress)
 					{
+						// Oyuncu notalari biraz buyuk; sustain Y kucultme (bosluk olmasin)
+						if (dunceNote.isSustainNote)
+						{
+							dunceNote.scale.x *= 0.95;
+						}
+						else
+						{
+							dunceNote.scale.x *= 0.95;
+							dunceNote.scale.y *= 0.95;
+						}
+						dunceNote.updateHitbox();
+					}
+					else
+					{
+						// Rakip notalari gizli + kucuk
+						if (dunceNote.isSustainNote)
+							dunceNote.scale.x *= 0.8;
+						else
+						{
+							dunceNote.scale.x *= 0.8;
+							dunceNote.scale.y *= 0.8;
+						}
+						dunceNote.updateHitbox();
 						dunceNote.visible = false;
 						dunceNote.alpha = 0;
 					}
