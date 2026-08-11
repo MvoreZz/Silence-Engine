@@ -69,18 +69,18 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		if (ClientPrefs.data.vsliceMobileControls)
 		{
 			// Touch zones under bottom player strums (V-Slice layout)
-			final zoneW:Int = Std.int(FlxG.width * 0.17);
-			final gap:Int = Std.int(FlxG.width * 0.04);
+			final zoneW:Int = Std.int(FlxG.width * 0.15);
+			final gap:Int = Std.int(FlxG.width * 0.035);
 			final total:Int = zoneW * 4 + gap * 3;
 			final startX:Int = Std.int((FlxG.width - total) / 2);
 			final zoneH:Int = Std.int(FlxG.height * 0.35);
 			final zoneY:Int = FlxG.height - zoneH;
-			final outerPull:Int = Std.int(FlxG.width * 0.025);
+			final sideShift:Int = Std.int(FlxG.width * 0.02);
 
-			add(buttonLeft = createHint(startX + outerPull, zoneY, zoneW, zoneH, 0xFFC24B99));
-			add(buttonDown = createHint(startX + (zoneW + gap) * 1, zoneY, zoneW, zoneH, 0xFF00FFFF));
-			add(buttonUp = createHint(startX + (zoneW + gap) * 2, zoneY, zoneW, zoneH, 0xFF12FA05));
-			add(buttonRight = createHint(startX + (zoneW + gap) * 3 - outerPull, zoneY, zoneW, zoneH, 0xFFF9393F));
+			add(buttonLeft = createHint(startX - sideShift, zoneY, zoneW, zoneH, 0xFFC24B99));
+			add(buttonDown = createHint(startX + (zoneW + gap) * 1 - sideShift, zoneY, zoneW, zoneH, 0xFF00FFFF));
+			add(buttonUp = createHint(startX + (zoneW + gap) * 2 + sideShift, zoneY, zoneW, zoneH, 0xFF12FA05));
+			add(buttonRight = createHint(startX + (zoneW + gap) * 3 + sideShift, zoneY, zoneW, zoneH, 0xFFF9393F));
 		}
 		else switch (extraMode)
 		{
