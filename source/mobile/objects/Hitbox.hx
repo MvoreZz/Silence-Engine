@@ -75,11 +75,12 @@ class Hitbox extends MobileInputManager implements IMobileControls
 			final startX:Int = Std.int((FlxG.width - total) / 2);
 			final zoneH:Int = Std.int(FlxG.height * 0.35);
 			final zoneY:Int = FlxG.height - zoneH;
+			final outerPull:Int = Std.int(FlxG.width * 0.025);
 
-			add(buttonLeft = createHint(startX, zoneY, zoneW, zoneH, 0xFFC24B99));
+			add(buttonLeft = createHint(startX + outerPull, zoneY, zoneW, zoneH, 0xFFC24B99));
 			add(buttonDown = createHint(startX + (zoneW + gap) * 1, zoneY, zoneW, zoneH, 0xFF00FFFF));
 			add(buttonUp = createHint(startX + (zoneW + gap) * 2, zoneY, zoneW, zoneH, 0xFF12FA05));
-			add(buttonRight = createHint(startX + (zoneW + gap) * 3, zoneY, zoneW, zoneH, 0xFFF9393F));
+			add(buttonRight = createHint(startX + (zoneW + gap) * 3 - outerPull, zoneY, zoneW, zoneH, 0xFFF9393F));
 		}
 		else switch (extraMode)
 		{
