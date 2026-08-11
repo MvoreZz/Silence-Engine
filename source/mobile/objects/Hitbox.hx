@@ -69,8 +69,8 @@ class Hitbox extends MobileInputManager implements IMobileControls
 		if (ClientPrefs.data.vsliceMobileControls)
 		{
 			// Touch zones under bottom player strums (V-Slice layout)
-			final zoneW:Int = Std.int(FlxG.width * 0.165);
-			final gap:Int = Std.int(FlxG.width * 0.01);
+			final zoneW:Int = Std.int(FlxG.width * 0.17);
+			final gap:Int = Std.int(FlxG.width * 0.04);
 			final total:Int = zoneW * 4 + gap * 3;
 			final startX:Int = Std.int((FlxG.width - total) / 2);
 			final zoneH:Int = Std.int(FlxG.height * 0.35);
