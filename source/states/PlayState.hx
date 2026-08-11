@@ -1578,7 +1578,7 @@ class PlayState extends MusicBeatState
 			return;
 
 		final slotW:Float = FlxG.width * 0.165;
-		final gap:Float = FlxG.width * 0.01; // daha siki oyuncu araligi
+		final gap:Float = FlxG.width * 0.01; // tighter player range
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
 		final playerY:Float = FlxG.height - slotW - 30;
@@ -1599,7 +1599,7 @@ class PlayState extends MusicBeatState
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			// Nota boyutuyla eslesmesi icin daha kucuk
+			// Resized to match the note size
 			s.scale.x *= 0.55;
 			s.scale.y *= 0.55;
 			s.updateHitbox();
