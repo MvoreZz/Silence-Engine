@@ -1577,12 +1577,13 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player
+		// Player: orta iki ayni, sol/sag biraz iceri
 		final slotW:Float = FlxG.width * 0.17;
 		final gap:Float = FlxG.width * 0.04;
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
 		final playerY:Float = FlxG.height - slotW - 20;
+		final outerPull:Float = FlxG.width * 0.025; // sol ve sagi iceri cek
 
 		for (i in 0...playerStrums.length)
 		{
@@ -1591,18 +1592,27 @@ class PlayState extends MusicBeatState
 			s.scale.x *= 1.05;
 			s.scale.y *= 1.05;
 			s.updateHitbox();
-			s.x = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
+			var px:Float = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
+			if (i == 0) px += outerPull; // sol
+			if (i == 3) px -= outerPull; // sag
+			s.x = px;
 			s.y = playerY + (slotW - s.height) * 0.5;
 			s.downScroll = true;
 		}
 
-		// Opponent arrows (strum) and incoming notes will be hidden
+		// Rakip strum oklari sol ustte gorunur (kucuk)
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			s.visible = false;
-			s.alpha = 0;
+			s.scale.x *= 0.55;
+			s.scale.y *= 0.55;
+			s.updateHitbox();
+			s.x = 30 + i * (s.width + 8);
+			s.y = 40;
+			s.downScroll = false;
+			s.visible = true;
+			s.alpha = 1;
 		}
 	}
 
@@ -1873,7 +1883,7 @@ class PlayState extends MusicBeatState
 				notes.insert(0, dunceNote);
 				dunceNote.spawned = true;
 
-				// Hide the notes coming to the opponent
+				// V-Slice: sadece rakibe GELEN notalari gizle (strumlar durur)
 				if (ClientPrefs.data.vsliceMobileControls && !dunceNote.mustPress)
 				{
 					dunceNote.visible = false;
@@ -1914,7 +1924,7 @@ class PlayState extends MusicBeatState
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 
-							// Keep rival notes secret
+							// V-Slice: rakip notalari gizli kalsin
 							if (ClientPrefs.data.vsliceMobileControls && !daNote.mustPress)
 							{
 								daNote.visible = false;
