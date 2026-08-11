@@ -1577,11 +1577,12 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		final slotW:Float = FlxG.width * 0.165;
-		final gap:Float = FlxG.width * 0.01; // tighter player range
+		// Player: screenshot gibi yayilmis aralik
+		final slotW:Float = FlxG.width * 0.17;
+		final gap:Float = FlxG.width * 0.04;
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
-		final playerY:Float = FlxG.height - slotW - 30;
+		final playerY:Float = FlxG.height - slotW - 20;
 
 		for (i in 0...playerStrums.length)
 		{
@@ -1595,17 +1596,13 @@ class PlayState extends MusicBeatState
 			s.downScroll = true;
 		}
 
+		// Rakip oklari (strum) ve gelen notalar gizlenecek
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			// Resized to match the note size
-			s.scale.x *= 0.55;
-			s.scale.y *= 0.55;
-			s.updateHitbox();
-			s.x = 30 + i * (s.width + 8);
-			s.y = 40;
-			s.downScroll = false;
+			s.visible = false;
+			s.alpha = 0;
 		}
 	}
 
@@ -1876,6 +1873,13 @@ class PlayState extends MusicBeatState
 				notes.insert(0, dunceNote);
 				dunceNote.spawned = true;
 
+				// V-Slice: rakibe gelen notalari gizle
+				if (ClientPrefs.data.vsliceMobileControls && !dunceNote.mustPress)
+				{
+					dunceNote.visible = false;
+					dunceNote.alpha = 0;
+				}
+
 				callOnLuas('onSpawnNote', [notes.members.indexOf(dunceNote), dunceNote.noteData, dunceNote.noteType, dunceNote.isSustainNote, dunceNote.strumTime]);
 				callOnHScript('onSpawnNote', [dunceNote]);
 
@@ -1909,6 +1913,13 @@ class PlayState extends MusicBeatState
 
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
+
+							// V-Slice: rakip notalarini gizli tut
+							if (ClientPrefs.data.vsliceMobileControls && !daNote.mustPress)
+							{
+								daNote.visible = false;
+								daNote.alpha = 0;
+							}
 
 							if(daNote.mustPress)
 							{
