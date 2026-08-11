@@ -1873,7 +1873,7 @@ class PlayState extends MusicBeatState
 				notes.insert(0, dunceNote);
 				dunceNote.spawned = true;
 
-				// V-Slice: rakibe gelen notalari gizle
+				// Hide the notes coming to the opponent
 				if (ClientPrefs.data.vsliceMobileControls && !dunceNote.mustPress)
 				{
 					dunceNote.visible = false;
@@ -1914,7 +1914,7 @@ class PlayState extends MusicBeatState
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 
-							// V-Slice: rakip notalarini gizli tut
+							// Keep rival notes secret
 							if (ClientPrefs.data.vsliceMobileControls && !daNote.mustPress)
 							{
 								daNote.visible = false;
