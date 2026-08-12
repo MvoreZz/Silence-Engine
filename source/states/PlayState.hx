@@ -1571,13 +1571,13 @@ class PlayState extends MusicBeatState
 
 	public var skipArrowStartTween:Bool = false; //for lua
 
-	/** V-Slice mobile: player strums at bottom (tap them), opponent top-left */
+	/** V-Slice mobile: player strums at bottom, opponent near health bar */
 	function applyVsliceStrumLayout():Void
 	{
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player: biraz daha buyuk notalar/strumlar
+		// Player strums at bottom (scale 1.0)
 		final slotW:Float = FlxG.width * 0.155;
 		final gap:Float = FlxG.width * 0.018;
 		final total:Float = slotW * 4 + gap * 3;
@@ -1589,20 +1589,20 @@ class PlayState extends MusicBeatState
 		{
 			var s:StrumNote = playerStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 1.05;
-			s.scale.y *= 1.05;
+			s.scale.x *= 1.0;
+			s.scale.y *= 1.0;
 			s.updateHitbox();
 			var px:Float = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
-			if (i == 0) px += pairPull;
+			if (i == 0) px += pairPull; // left toward down
 			if (i == 1) px -= pairPull * 0.3;
 			if (i == 2) px += pairPull * 0.3;
-			if (i == 3) px -= pairPull;
+			if (i == 3) px -= pairPull; // right toward up
 			s.x = px;
 			s.y = playerY + (slotW - s.height) * 0.5;
 			s.downScroll = true;
 		}
 
-		// Rakip strum: health bar yakin, sol tarafta (ikonlarin karsisi)
+		// Opponent strums near health bar, left side (opposite the icons)
 		final oppY:Float = (healthBar != null) ? (healthBar.y + healthBar.height + 4) : 50;
 		for (i in 0...opponentStrums.length)
 		{
@@ -1890,21 +1890,21 @@ class PlayState extends MusicBeatState
 				{
 					if (dunceNote.mustPress)
 					{
-						// Oyuncu notalari biraz daha buyuk; sustain Y kucultme (bosluk olmasin)
+						// Player notes at 1.0; do not shrink sustain Y (avoids gaps)
 						if (dunceNote.isSustainNote)
 						{
-							dunceNote.scale.x *= 1.05;
+							dunceNote.scale.x *= 1.0;
 						}
 						else
 						{
-							dunceNote.scale.x *= 1.05;
-							dunceNote.scale.y *= 1.05;
+							dunceNote.scale.x *= 1.0;
+							dunceNote.scale.y *= 1.0;
 						}
 						dunceNote.updateHitbox();
 					}
 					else
 					{
-						// Rakip notalari gizli + kucuk
+						// Hide opponent notes (strums stay visible)
 						if (dunceNote.isSustainNote)
 							dunceNote.scale.x *= 0.8;
 						else
@@ -1952,7 +1952,7 @@ class PlayState extends MusicBeatState
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 
-							// V-Slice: rakip notalari gizli kalsin
+							// V-Slice: keep opponent notes hidden
 							if (ClientPrefs.data.vsliceMobileControls && !daNote.mustPress)
 							{
 								daNote.visible = false;
@@ -3186,7 +3186,7 @@ class PlayState extends MusicBeatState
 		note.hitByOpponent = true;
 
 		// Hold Splash for opponent (on note head if it has a sustain tail)
-		// Rakip hold splash kapali (V-Slice sol ust)
+		// Opponent hold splash disabled in V-Slice mode
 		if (!ClientPrefs.data.vsliceMobileControls
 			&& !note.isSustainNote && note.tail.length > 0
 			&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
