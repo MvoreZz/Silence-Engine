@@ -1577,42 +1577,42 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player: notalar biraz buyuk; araliklar daha yakin (orta bosluk kalsin)
+		// Player: biraz daha buyuk notalar/strumlar
 		final slotW:Float = FlxG.width * 0.155;
-		final gap:Float = FlxG.width * 0.018; // asagi-yukari daha yakin
+		final gap:Float = FlxG.width * 0.018;
 		final total:Float = slotW * 4 + gap * 3;
 		final startX:Float = (FlxG.width - total) / 2;
 		final playerY:Float = FlxG.height - slotW - 25;
-		// sol->asagi ve yukari->sag biraz daha yakin
 		final pairPull:Float = FlxG.width * 0.012;
 
 		for (i in 0...playerStrums.length)
 		{
 			var s:StrumNote = playerStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 0.95;
-			s.scale.y *= 0.95;
+			s.scale.x *= 1.05;
+			s.scale.y *= 1.05;
 			s.updateHitbox();
 			var px:Float = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
-			if (i == 0) px += pairPull; // sol -> asagiya yaklas
+			if (i == 0) px += pairPull;
 			if (i == 1) px -= pairPull * 0.3;
 			if (i == 2) px += pairPull * 0.3;
-			if (i == 3) px -= pairPull; // sag -> yukariya yaklas
+			if (i == 3) px -= pairPull;
 			s.x = px;
 			s.y = playerY + (slotW - s.height) * 0.5;
 			s.downScroll = true;
 		}
 
-		// Rakip strum sol ust (kucuk), hold splash kapali
+		// Rakip strum: health bar yakin, sol tarafta (ikonlarin karsisi)
+		final oppY:Float = (healthBar != null) ? (healthBar.y + healthBar.height + 4) : 50;
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 0.48;
-			s.scale.y *= 0.48;
+			s.scale.x *= 0.5;
+			s.scale.y *= 0.5;
 			s.updateHitbox();
-			s.x = 30 + i * (s.width + 8);
-			s.y = 40;
+			s.x = 20 + i * (s.width + 6);
+			s.y = oppY;
 			s.downScroll = false;
 			s.visible = true;
 			s.alpha = 1;
@@ -1890,15 +1890,15 @@ class PlayState extends MusicBeatState
 				{
 					if (dunceNote.mustPress)
 					{
-						// Oyuncu notalari biraz buyuk; sustain Y kucultme (bosluk olmasin)
+						// Oyuncu notalari biraz daha buyuk; sustain Y kucultme (bosluk olmasin)
 						if (dunceNote.isSustainNote)
 						{
-							dunceNote.scale.x *= 0.95;
+							dunceNote.scale.x *= 1.05;
 						}
 						else
 						{
-							dunceNote.scale.x *= 0.95;
-							dunceNote.scale.y *= 0.95;
+							dunceNote.scale.x *= 1.05;
+							dunceNote.scale.y *= 1.05;
 						}
 						dunceNote.updateHitbox();
 					}
