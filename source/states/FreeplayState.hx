@@ -54,6 +54,13 @@ class FreeplayState extends MusicBeatState
 
 	var player:MusicPlayer;
 
+	// Search
+	var searchString:String = '';
+	var searchText:FlxText;
+	var searching:Bool = false;
+	var filtered:Array<Int> = [];
+	var curFiltered:Int = 0;
+
 	override function create()
 	{
 		//Paths.clearStoredMemory();
@@ -643,9 +650,7 @@ class FreeplayState extends MusicBeatState
 		FlxG.autoPause = ClientPrefs.data.autoPause;
 		if (!FlxG.sound.music.playing && !stopMusicPlay)
 			FlxG.sound.playMusic(Paths.music('freakyMenu'));
-	}	
-}
-
+	}
 
 	function updateSearchLabel():Void
 	{
@@ -748,6 +753,11 @@ class FreeplayState extends MusicBeatState
 		changeSelection(0, false);
 		updateSearchLabel();
 	}
+
+}
+
+
+
 
 class SongMetadata
 {
