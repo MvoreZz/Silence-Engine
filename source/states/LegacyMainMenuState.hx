@@ -42,7 +42,15 @@ class LegacyMainMenuState extends MusicBeatState
 		persistentUpdate = persistentDraw = true;
 
 		var yScroll:Float = Math.max(0.25 - (0.05 * (optionShit.length - 4)), 0.1);
-		var bg:FlxSprite = new FlxSprite(-80).loadGraphic(Paths.image('mainmenu/legacy/menuBG'));
+		// Background: try legacy, fallback to default (prevents black screen)
+		var bg:FlxSprite = new FlxSprite(-80);
+		try {
+			bg.loadGraphic(Paths.image('mainmenu/legacy/menuBG'));
+		} catch (e:Dynamic) {
+			bg.loadGraphic(Paths.image('menuBG'));
+		}
+		if (bg.graphic == null || bg.width < 2)
+			bg.loadGraphic(Paths.image('menuBG'));
 		bg.antialiasing = ClientPrefs.data.antialiasing;
 		bg.scrollFactor.set(0, yScroll);
 		bg.setGraphicSize(Std.int(bg.width * 1.175));
@@ -53,7 +61,14 @@ class LegacyMainMenuState extends MusicBeatState
 		camFollow = new FlxObject(0, 0, 1, 1);
 		add(camFollow);
 
-		magenta = new FlxSprite(-80).loadGraphic(Paths.image('mainmenu/legacy/menuDesat'));
+		magenta = new FlxSprite(-80);
+		try {
+			magenta.loadGraphic(Paths.image('mainmenu/legacy/menuDesat'));
+		} catch (e:Dynamic) {
+			magenta.loadGraphic(Paths.image('menuDesat'));
+		}
+		if (magenta.graphic == null || magenta.width < 2)
+			magenta.loadGraphic(Paths.image('menuDesat'));
 		magenta.antialiasing = ClientPrefs.data.antialiasing;
 		magenta.scrollFactor.set(0, yScroll);
 		magenta.setGraphicSize(Std.int(magenta.width * 1.175));
