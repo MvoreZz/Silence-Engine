@@ -40,6 +40,12 @@ class MainMenuState extends MusicBeatState
 	static var showOutdatedWarning:Bool = true;
 	override function create()
 	{
+		if (ClientPrefs.data.legacyMainMenu)
+		{
+			MusicBeatState.switchState(new LegacyMainMenuState());
+			return;
+		}
+
 		super.create();
 
 		#if MODS_ALLOWED
