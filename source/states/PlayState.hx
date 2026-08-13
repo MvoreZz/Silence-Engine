@@ -2047,8 +2047,17 @@ class PlayState extends MusicBeatState
 		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
 		healthBar.percent = (newPercent != null ? newPercent : 0);
 
-		iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
-		iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
+		if (opponentMode)
+		{
+			// Playing as opponent: high health = dad winning, bf losing
+			iconP1.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0;
+			iconP2.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0;
+		}
+		else
+		{
+			iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; // player losing under 20%
+			iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; // opponent losing over 80%
+		}
 		return health;
 	}
 
@@ -3126,8 +3135,8 @@ class PlayState extends MusicBeatState
 		totalPlayed++;
 		RecalculateRating(true);
 
-		// play character anims
-		var char:Character = boyfriend;
+		// play character anims (opponent mode: player controls dad)
+		var char:Character = opponentMode ? dad : boyfriend;
 		if((note != null && note.gfNote) || (SONG.notes[curSection] != null && SONG.notes[curSection].gfSection)) char = gf;
 
 		if(char != null && (note == null || !note.noMissAnimation) && char.hasMissAnimations)
@@ -3298,10 +3307,11 @@ class PlayState extends MusicBeatState
 				switch(note.noteType)
 				{
 					case 'Hurt Note':
-						if(boyfriend.hasAnimation('hurt'))
+						var hurtChar:Character = opponentMode ? dad : boyfriend;
+						if(hurtChar != null && hurtChar.hasAnimation('hurt'))
 						{
-							boyfriend.playAnim('hurt', true);
-							boyfriend.specialAnim = true;
+							hurtChar.playAnim('hurt', true);
+							hurtChar.specialAnim = true;
 						}
 				}
 			}
