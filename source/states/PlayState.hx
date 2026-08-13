@@ -1577,7 +1577,7 @@ class PlayState extends MusicBeatState
 		if (!ClientPrefs.data.vsliceMobileControls)
 			return;
 
-		// Player strums at bottom (scale 1.0)
+		// Player strums at bottom (scale 1.05)
 		final slotW:Float = FlxG.width * 0.155;
 		final gap:Float = FlxG.width * 0.018;
 		final total:Float = slotW * 4 + gap * 3;
@@ -1589,8 +1589,8 @@ class PlayState extends MusicBeatState
 		{
 			var s:StrumNote = playerStrums.members[i];
 			if (s == null) continue;
-			s.scale.x *= 1.0;
-			s.scale.y *= 1.0;
+			s.scale.x *= 1.05;
+			s.scale.y *= 1.05;
 			s.updateHitbox();
 			var px:Float = startX + (slotW + gap) * i + (slotW - s.width) * 0.5;
 			if (i == 0) px += pairPull; // left toward down
@@ -1603,7 +1603,7 @@ class PlayState extends MusicBeatState
 		}
 
 		// Opponent strums near health bar, left side (opposite the icons)
-		final oppY:Float = (healthBar != null) ? (healthBar.y + healthBar.height + 4) : 50;
+		final oppY:Float = (healthBar != null) ? (healthBar.y + healthBar.height - 2) : 46;
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
@@ -1890,15 +1890,15 @@ class PlayState extends MusicBeatState
 				{
 					if (dunceNote.mustPress)
 					{
-						// Player notes at 1.0; do not shrink sustain Y (avoids gaps)
+						// Player notes at 1.05; do not shrink sustain Y (avoids gaps)
 						if (dunceNote.isSustainNote)
 						{
-							dunceNote.scale.x *= 1.0;
+							dunceNote.scale.x *= 1.05;
 						}
 						else
 						{
-							dunceNote.scale.x *= 1.0;
-							dunceNote.scale.y *= 1.0;
+							dunceNote.scale.x *= 1.05;
+							dunceNote.scale.y *= 1.05;
 						}
 						dunceNote.updateHitbox();
 					}
