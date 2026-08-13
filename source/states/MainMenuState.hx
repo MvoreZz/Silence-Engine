@@ -79,19 +79,47 @@ class MainMenuState extends MusicBeatState
 		menuItems = new FlxTypedGroup<FlxSprite>();
 		add(menuItems);
 
-		for (num => option in optionShit)
+		if (ClientPrefs.data.legacyMainMenu)
 		{
-			var item:FlxSprite = createMenuItem(option, 0, (num * 140) + 90);
-			item.y += (4 - optionShit.length) * 70; // Offsets for when you have anything other than 4 items
-			item.screenCenter(X);
-		}
+			// Psych 0.7.3 style: single vertical list
+			var legacyOptions:Array<String> = [
+				'story_mode',
+				'freeplay',
+				#if MODS_ALLOWED 'mods', #end
+				#if ACHIEVEMENTS_ALLOWED 'achievements', #end
+				'credits',
+				'options'
+			];
+			optionShit = legacyOptions;
+			leftOption = null;
+			rightOption = null;
+			leftItem = null;
+			rightItem = null;
+			curColumn = CENTER;
 
-		if (leftOption != null)
-			leftItem = createMenuItem(leftOption, 60, 490);
-		if (rightOption != null)
+			for (num => option in optionShit)
+			{
+				var item:FlxSprite = createMenuItem(option, 0, (num * 160) + 60);
+				item.scrollFactor.set(0, 0.25);
+				item.screenCenter(X);
+			}
+		}
+		else
 		{
-			rightItem = createMenuItem(rightOption, FlxG.width - 60, 490);
-			rightItem.x -= rightItem.width;
+			for (num => option in optionShit)
+			{
+				var item:FlxSprite = createMenuItem(option, 0, (num * 140) + 90);
+				item.y += (4 - optionShit.length) * 70; // Offsets for when you have anything other than 4 items
+				item.screenCenter(X);
+			}
+
+			if (leftOption != null)
+				leftItem = createMenuItem(leftOption, 60, 490);
+			if (rightOption != null)
+			{
+				rightItem = createMenuItem(rightOption, FlxG.width - 60, 490);
+				rightItem.x -= rightItem.width;
+			}
 		}
 
 		var psychVer:FlxText = new FlxText(12, FlxG.height - 44, 0, "Psych Engine v" + psychEngineVersion, 12);
@@ -228,6 +256,7 @@ class MainMenuState extends MusicBeatState
 				if(timeNotMoving > 2) FlxG.mouse.visible = false;
 			}
 
+			if (!ClientPrefs.data.legacyMainMenu)
 			switch(curColumn)
 			{
 				case CENTER:
@@ -353,7 +382,7 @@ class MainMenuState extends MusicBeatState
 
 	function changeItem(change:Int = 0)
 	{
-		if(change != 0) curColumn = CENTER;
+		if(change != 0 || ClientPrefs.data.legacyMainMenu) curColumn = CENTER;
 		curSelected = FlxMath.wrap(curSelected + change, 0, optionShit.length - 1);
 		FlxG.sound.play(Paths.sound('scrollMenu'));
 
