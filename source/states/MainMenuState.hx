@@ -81,7 +81,7 @@ class MainMenuState extends MusicBeatState
 
 		if (ClientPrefs.data.legacyMainMenu)
 		{
-			// Psych 0.7.3 style: single vertical list
+			// Classic vertical list (like photo): Story, Freeplay, Mods, Awards, Credits, Settings at bottom
 			var legacyOptions:Array<String> = [
 				'story_mode',
 				'freeplay',
@@ -97,10 +97,12 @@ class MainMenuState extends MusicBeatState
 			rightItem = null;
 			curColumn = CENTER;
 
+			final startY:Float = 40;
+			final gap:Float = 105;
 			for (num => option in optionShit)
 			{
-				var item:FlxSprite = createMenuItem(option, 0, (num * 160) + 60);
-				item.scrollFactor.set(0, 0.25);
+				var item:FlxSprite = createMenuItem(option, 0, startY + (num * gap));
+				item.scrollFactor.set(0, 0);
 				item.screenCenter(X);
 			}
 		}
@@ -133,6 +135,9 @@ class MainMenuState extends MusicBeatState
 		changeItem();
 
 		#if ACHIEVEMENTS_ALLOWED
+		// Unlock on first time reaching the main menu
+		Achievements.unlock('thanks_for_playing');
+
 		// Unlocks "Freaky on a Friday Night" achievement if it's a Friday and between 18:00 PM and 23:59 PM
 		var leDate = Date.now();
 		if (leDate.getDay() == 5 && leDate.getHours() >= 18)
