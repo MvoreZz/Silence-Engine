@@ -1,5 +1,7 @@
 package states;
 
+import flixel.input.keyboard.FlxKey;
+
 import backend.WeekData;
 import backend.Highscore;
 import backend.Song;
@@ -196,6 +198,15 @@ class FreeplayState extends MusicBeatState
 		changeSelection();
 		updateTexts();
 
+		// Search bar UI
+		searchText = new FlxText(8, FlxG.height - 36, FlxG.width - 16, '', 18);
+		searchText.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		searchText.scrollFactor.set();
+		add(searchText);
+		updateSearchLabel();
+
+		rebuildFilter();
+
 		addTouchPad('LEFT_FULL', 'A_B_C_X_Y_Z');
 		super.create();
 	}
@@ -256,18 +267,28 @@ class FreeplayState extends MusicBeatState
 		{
 			scoreText.text = Language.getPhrase('personal_best', 'PERSONAL BEST: {1} ({2}%)', [lerpScore, ratingSplit.join('.')]);
 			positionHighscore();
-			
-			if(songs.length > 1)
+
+			// Search mode: type to filter. ESC closes. F/C opens when not searching.
+			if (searching)
+			{
+				handleSearchInput();
+			}
+			else if (FlxG.keys.justPressed.F || (controls.mobileC && touchPad != null && touchPad.buttonC != null && touchPad.buttonC.justPressed))
+			{
+				searching = true;
+				updateSearchLabel();
+			}
+			else if(songs.length > 1)
 			{
 				if(FlxG.keys.justPressed.HOME)
 				{
-					curSelected = 0;
+					curFiltered = 0;
 					changeSelection();
 					holdTime = 0;	
 				}
 				else if(FlxG.keys.justPressed.END)
 				{
-					curSelected = songs.length - 1;
+					curFiltered = filtered.length - 1;
 					changeSelection();
 					holdTime = 0;	
 				}
@@ -528,7 +549,11 @@ class FreeplayState extends MusicBeatState
 		if (player.playingMusic)
 			return;
 
-		curSelected = FlxMath.wrap(curSelected + change, 0, songs.length-1);
+		if (filtered.length < 1)
+			rebuildFilter();
+
+		curFiltered = FlxMath.wrap(curFiltered + change, 0, filtered.length - 1);
+		curSelected = filtered[curFiltered];
 		_updateSongLastDifficulty();
 		if(playSound) FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
 
@@ -545,7 +570,7 @@ class FreeplayState extends MusicBeatState
 			var icon:HealthIcon = iconArray[num];
 			item.alpha = 0.6;
 			icon.alpha = 0.6;
-			if (item.targetY == curSelected)
+			if (num == curSelected)
 			{
 				item.alpha = 1;
 				icon.alpha = 1;
@@ -587,7 +612,7 @@ class FreeplayState extends MusicBeatState
 	var _lastVisibles:Array<Int> = [];
 	public function updateTexts(elapsed:Float = 0.0)
 	{
-		lerpSelected = FlxMath.lerp(curSelected, lerpSelected, Math.exp(-elapsed * 9.6));
+		lerpSelected = FlxMath.lerp(curFiltered, lerpSelected, Math.exp(-elapsed * 9.6));
 		for (i in _lastVisibles)
 		{
 			grpSongs.members[i].visible = grpSongs.members[i].active = false;
@@ -595,10 +620,11 @@ class FreeplayState extends MusicBeatState
 		}
 		_lastVisibles = [];
 
-		var min:Int = Math.round(Math.max(0, Math.min(songs.length, lerpSelected - _drawDistance)));
-		var max:Int = Math.round(Math.max(0, Math.min(songs.length, lerpSelected + _drawDistance)));
-		for (i in min...max)
+		var min:Int = Math.round(Math.max(0, Math.min(filtered.length, lerpSelected - _drawDistance)));
+		var max:Int = Math.round(Math.max(0, Math.min(filtered.length, lerpSelected + _drawDistance)));
+		for (fi in min...max)
 		{
+			var i:Int = filtered[fi];
 			var item:Alphabet = grpSongs.members[i];
 			item.visible = item.active = true;
 			item.x = ((item.targetY - lerpSelected) * item.distancePerItem.x) + item.startPosition.x;
@@ -619,6 +645,109 @@ class FreeplayState extends MusicBeatState
 			FlxG.sound.playMusic(Paths.music('freakyMenu'));
 	}	
 }
+
+
+	function updateSearchLabel():Void
+	{
+		if (searchText == null) return;
+		if (searching)
+			searchText.text = 'Search: ' + searchString + '_  (Esc/Enter to close)';
+		else if (searchString.length > 0)
+			searchText.text = 'Filter: "' + searchString + '"  (' + filtered.length + ' songs)  [F/C to edit]';
+		else
+			searchText.text = 'Press F (or C on mobile) to search songs...';
+	}
+
+	function handleSearchInput():Void
+	{
+		if (FlxG.keys.justPressed.ESCAPE)
+		{
+			searching = false;
+			updateSearchLabel();
+			return;
+		}
+		if (FlxG.keys.justPressed.ENTER)
+		{
+			searching = false;
+			rebuildFilter();
+			updateSearchLabel();
+			return;
+		}
+		if (FlxG.keys.justPressed.BACKSPACE)
+		{
+			if (searchString.length > 0)
+			{
+				searchString = searchString.substring(0, searchString.length - 1);
+				rebuildFilter();
+				updateSearchLabel();
+			}
+			return;
+		}
+
+		// A-Z and 0-9
+		for (key in [FlxKey.A, FlxKey.B, FlxKey.C, FlxKey.D, FlxKey.E, FlxKey.F, FlxKey.G, FlxKey.H, FlxKey.I, FlxKey.J,
+			FlxKey.K, FlxKey.L, FlxKey.M, FlxKey.N, FlxKey.O, FlxKey.P, FlxKey.Q, FlxKey.R, FlxKey.S, FlxKey.T,
+			FlxKey.U, FlxKey.V, FlxKey.W, FlxKey.X, FlxKey.Y, FlxKey.Z,
+			FlxKey.ZERO, FlxKey.ONE, FlxKey.TWO, FlxKey.THREE, FlxKey.FOUR, FlxKey.FIVE, FlxKey.SIX, FlxKey.SEVEN, FlxKey.EIGHT, FlxKey.NINE,
+			FlxKey.SPACE, FlxKey.MINUS])
+		{
+			if (!FlxG.keys.anyJustPressed([key])) continue;
+			var ch:String = FlxKey.toStringMap.get(key);
+			if (ch == null) continue;
+			if (ch == 'MINUS') ch = '-';
+			else if (ch == 'SPACE') ch = ' ';
+			else if (ch.length == 1) ch = ch.toLowerCase();
+			else continue;
+			searchString += ch;
+			rebuildFilter();
+			updateSearchLabel();
+			break;
+		}
+	}
+
+	function rebuildFilter():Void
+	{
+		var prevSong:String = (songs.length > 0 && curSelected >= 0 && curSelected < songs.length) ? songs[curSelected].songName : '';
+		filtered = [];
+		var q:String = searchString.trim().toLowerCase();
+		for (i in 0...songs.length)
+		{
+			if (q.length == 0 || songs[i].songName.toLowerCase().indexOf(q) != -1)
+				filtered.push(i);
+		}
+
+		// targetY for filtered order
+		for (i in 0...songs.length)
+		{
+			var fi:Int = filtered.indexOf(i);
+			if (fi != -1)
+				grpSongs.members[i].targetY = fi;
+			else
+				grpSongs.members[i].targetY = 9999;
+		}
+
+		if (filtered.length < 1)
+		{
+			// no matches: show empty state, keep selection clamped
+			curFiltered = 0;
+			return;
+		}
+
+		// try keep same song selected
+		var found:Int = -1;
+		for (fi in 0...filtered.length)
+		{
+			if (songs[filtered[fi]].songName == prevSong)
+			{
+				found = fi;
+				break;
+			}
+		}
+		curFiltered = (found != -1) ? found : 0;
+		curSelected = filtered[curFiltered];
+		changeSelection(0, false);
+		updateSearchLabel();
+	}
 
 class SongMetadata
 {
