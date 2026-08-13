@@ -66,6 +66,13 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 			BOOL);
 		addOption(option);
 
+		var option:Option = new Option('Unlimited FPS',
+			"If checked, removes the FPS cap (runs as high as your device allows).\nFramerate option is ignored while this is on.",
+			'unlimitedFPS',
+			BOOL);
+		option.onChange = onChangeFramerate;
+		addOption(option);
+
 		super();
 		insert(1, boyfriend);
 	}
@@ -83,24 +90,25 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 
 	function onChangeFramerate()
 	{
-		if(ClientPrefs.data.framerate > FlxG.drawFramerate)
+		var fps:Int = ClientPrefs.data.unlimitedFPS ? 999 : ClientPrefs.data.framerate;
+		if(fps > FlxG.drawFramerate)
 		{
 			if (ClientPrefs.data.fpsRework)
-				FlxG.stage.window.frameRate = ClientPrefs.data.framerate;
+				FlxG.stage.window.frameRate = fps;
 			else
 			{
-				FlxG.updateFramerate = ClientPrefs.data.framerate;
-				FlxG.drawFramerate = ClientPrefs.data.framerate;
+				FlxG.updateFramerate = fps;
+				FlxG.drawFramerate = fps;
 			}
 		}
 		else
 		{
 			if (ClientPrefs.data.fpsRework)
-				FlxG.stage.window.frameRate = ClientPrefs.data.framerate;
+				FlxG.stage.window.frameRate = fps;
 			else
 			{
-				FlxG.drawFramerate = ClientPrefs.data.framerate;
-				FlxG.updateFramerate = ClientPrefs.data.framerate;
+				FlxG.drawFramerate = fps;
+				FlxG.updateFramerate = fps;
 			}
 		}
 	}
