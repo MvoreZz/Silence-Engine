@@ -217,14 +217,11 @@ class FreeplayState extends MusicBeatState
 		searchText.setFormat(Paths.font('vcr.ttf'), 20, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		searchText.scrollFactor.set();
 		add(searchText);
-		searching = true;
+		searching = false; // don't open keyboard until user taps search bar
 		updateSearchLabel();
 
-		// Mobile soft keyboard / text input
+		// Mobile text input listener (keyboard only enabled on search bar tap)
 		FlxG.stage.window.onTextInput.add(onMobileTextInput);
-		#if mobile
-		FlxG.stage.window.textInputEnabled = true;
-		#end
 
 		rebuildFilter();
 
@@ -237,8 +234,9 @@ class FreeplayState extends MusicBeatState
 		changeSelection(0, false);
 		persistentUpdate = true;
 		super.closeSubState();
+		// Re-add touchpad after substate (Gameplay Changers etc.)
 		removeTouchPad();
-		
+		addTouchPad('LEFT_FULL', 'A_B_C_X_Y_Z');
 	}
 
 	public function addSong(songName:String, weekNum:Int, songCharacter:String, color:Int)
@@ -299,7 +297,8 @@ class FreeplayState extends MusicBeatState
 				FlxG.stage.window.textInputEnabled = true;
 				#end
 			}
-			handleSearchInput();
+			if (searching)
+				handleSearchInput();
 
 			if(songs.length > 1)
 			{
@@ -357,7 +356,18 @@ class FreeplayState extends MusicBeatState
 
 		if (controls.BACK)
 		{
-			if (player.playingMusic)
+			// While searching: clear filter / close keyboard instead of leaving freeplay
+			if (searching || (searchString != null && searchString.length > 0))
+			{
+				searchString = '';
+				searching = false;
+				#if mobile
+				FlxG.stage.window.textInputEnabled = false;
+				#end
+				rebuildFilter();
+				updateSearchLabel();
+			}
+			else if (player != null && player.playingMusic)
 			{
 				FlxG.sound.music.stop();
 				destroyFreeplayVocals();
@@ -687,11 +697,12 @@ class FreeplayState extends MusicBeatState
 		if (searchString.length > 0)
 			searchText.text = searchString + '_';
 		else
-			searchText.text = #if mobile 'Tap to search songs...' #else 'Search songs...' #end;
+			searchText.text = 'Tap to search songs...';
 	}
 
 	function onMobileTextInput(text:String):Void
 	{
+		if (!searching) return;
 		if (text == null || text.length < 1) return;
 		// Some soft keyboards send newline on Enter
 		if (text == '\n' || text == '\r') return;
