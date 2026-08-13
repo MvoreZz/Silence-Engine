@@ -184,6 +184,13 @@ class MainMenuState extends MusicBeatState
 	var timeNotMoving:Float = 0;
 	override function update(elapsed:Float)
 	{
+		// During redirect to LegacyMainMenuState, menuItems may be null
+		if (menuItems == null)
+		{
+			super.update(elapsed);
+			return;
+		}
+
 		if (FlxG.sound.music.volume < 0.8)
 			FlxG.sound.music.volume = Math.min(FlxG.sound.music.volume + 0.5 * elapsed, 0.8);
 
@@ -302,7 +309,7 @@ class MainMenuState extends MusicBeatState
 				MusicBeatState.switchState(new TitleState());
 			}
 
-			if (controls.ACCEPT || (FlxG.mouse.overlaps(menuItems, FlxG.camera) && FlxG.mouse.justPressed && allowMouse))
+			if (controls.ACCEPT || (menuItems != null && FlxG.mouse.overlaps(menuItems, FlxG.camera) && FlxG.mouse.justPressed && allowMouse))
 			{
 				FlxG.sound.play(Paths.sound('confirmMenu'));
 				selectedSomethin = true;
@@ -311,8 +318,8 @@ class MainMenuState extends MusicBeatState
 				if (ClientPrefs.data.flashing)
 					FlxFlicker.flicker(magenta, 1.1, 0.15, false);
 
-				var item:FlxSprite;
-				var option:String;
+				var item:FlxSprite = null;
+				var option:String = null;
 				switch(curColumn)
 				{
 					case CENTER:
@@ -326,6 +333,12 @@ class MainMenuState extends MusicBeatState
 					case RIGHT:
 						option = rightOption;
 						item = rightItem;
+				}
+
+				if (item == null || option == null)
+				{
+					selectedSomethin = false;
+					return;
 				}
 
 				FlxFlicker.flicker(item, 1, 0.06, false, false, function(flick:FlxFlicker)
@@ -377,7 +390,7 @@ class MainMenuState extends MusicBeatState
 					FlxTween.tween(memb, {alpha: 0}, 0.4, {ease: FlxEase.quadOut});
 				}
 			}
-			else if (controls.justPressed('debug_1') || touchPad.buttonE.justPressed)
+			else if (controls.justPressed('debug_1') || (touchPad != null && touchPad.buttonE != null && touchPad.buttonE.justPressed))
 			{
 				selectedSomethin = true;
 				FlxG.mouse.visible = false;
@@ -400,7 +413,7 @@ class MainMenuState extends MusicBeatState
 			item.centerOffsets();
 		}
 
-		var selectedItem:FlxSprite;
+		var selectedItem:FlxSprite = null;
 		switch(curColumn)
 		{
 			case CENTER:
@@ -410,6 +423,7 @@ class MainMenuState extends MusicBeatState
 			case RIGHT:
 				selectedItem = rightItem;
 		}
+		if (selectedItem == null) return;
 		selectedItem.animation.play('selected');
 		selectedItem.centerOffsets();
 		camFollow.y = selectedItem.getGraphicMidpoint().y;
