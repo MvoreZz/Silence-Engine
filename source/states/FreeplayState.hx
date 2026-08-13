@@ -285,7 +285,7 @@ class FreeplayState extends MusicBeatState
 		var zPressed:Bool = (touchPad != null && touchPad.buttonZ != null && touchPad.buttonZ.pressed);
 		if((FlxG.keys.pressed.SHIFT || zPressed) && player != null && !player.playingMusic) shiftMult = 3;
 
-		if (!player.playingMusic)
+		if (player != null && !player.playingMusic)
 		{
 			scoreText.text = Language.getPhrase('personal_best', 'PERSONAL BEST: {1} ({2}%)', [lerpScore, ratingSplit.join('.')]);
 			positionHighscore();
@@ -378,15 +378,15 @@ class FreeplayState extends MusicBeatState
 			}
 		}
 
-		if((FlxG.keys.justPressed.CONTROL || touchPad.buttonC.justPressed) && !player.playingMusic)
+		if((FlxG.keys.justPressed.CONTROL || (touchPad != null && touchPad.buttonC != null && touchPad.buttonC.justPressed)) && player != null && !player.playingMusic)
 		{
 			persistentUpdate = false;
 			openSubState(new GameplayChangersSubstate());
 			removeTouchPad();
 		}
-		else if(FlxG.keys.justPressed.SPACE || touchPad.buttonX.justPressed)
+		else if(FlxG.keys.justPressed.SPACE || (touchPad != null && touchPad.buttonX != null && touchPad.buttonX.justPressed))
 		{
-			if(instPlaying != curSelected && !player.playingMusic)
+			if(instPlaying != curSelected && player != null && !player.playingMusic)
 			{
 				destroyFreeplayVocals();
 				FlxG.sound.music.volume = 0;
@@ -508,7 +508,7 @@ class FreeplayState extends MusicBeatState
 			DiscordClient.loadModRPC();
 			#end
 		}
-		else if((controls.RESET || touchPad.buttonY.justPressed) && !player.playingMusic)
+		else if((controls.RESET || (touchPad != null && touchPad.buttonY != null && touchPad.buttonY.justPressed)) && player != null && !player.playingMusic)
 		{
 			persistentUpdate = false;
 			openSubState(new ResetScoreSubState(songs[curSelected].songName, curDifficulty, songs[curSelected].songCharacter));
