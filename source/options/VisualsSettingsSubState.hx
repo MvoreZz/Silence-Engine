@@ -167,6 +167,12 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 			BOOL);
 		addOption(option);
 
+		var option:Option = new Option('Legacy Main Menu',
+			"If checked, uses the Psych Engine 0.7.3 style main menu\n(all options in one vertical list).",
+			'legacyMainMenu',
+			BOOL);
+		addOption(option);
+
 		super();
 		add(notes);
 		add(splashes);
