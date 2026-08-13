@@ -282,7 +282,8 @@ class FreeplayState extends MusicBeatState
 			ratingSplit[1] += '0';
 
 		var shiftMult:Int = 1;
-		if((FlxG.keys.pressed.SHIFT || touchPad.buttonZ.pressed) && !player.playingMusic) shiftMult = 3;
+		var zPressed:Bool = (touchPad != null && touchPad.buttonZ != null && touchPad.buttonZ.pressed);
+		if((FlxG.keys.pressed.SHIFT || zPressed) && player != null && !player.playingMusic) shiftMult = 3;
 
 		if (!player.playingMusic)
 		{
@@ -568,13 +569,19 @@ class FreeplayState extends MusicBeatState
 
 	function changeSelection(change:Int = 0, playSound:Bool = true)
 	{
-		if (player.playingMusic)
+		if (player != null && player.playingMusic)
 			return;
 
-		if (filtered.length < 1)
+		if (filtered == null || filtered.length < 1)
 			rebuildFilter();
 
+		// No matches: don't wrap (mod by 0)
+		if (filtered == null || filtered.length < 1)
+			return;
+
 		curFiltered = FlxMath.wrap(curFiltered + change, 0, filtered.length - 1);
+		if (curFiltered < 0 || curFiltered >= filtered.length)
+			curFiltered = 0;
 		curSelected = filtered[curFiltered];
 		_updateSongLastDifficulty();
 		if(playSound) FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
