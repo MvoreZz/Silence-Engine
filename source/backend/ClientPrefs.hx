@@ -38,6 +38,7 @@ import states.TitleState;
 	public var shaders:Bool = true;
 	public var cacheOnGPU:Bool = #if !switch false #else true #end; // GPU Caching made by Raltyro
 	public var framerate:Int = 60;
+	public var unlimitedFPS:Bool = false;
 	public var camZooms:Bool = true;
 	public var hideHud:Bool = false;
 	public var noteOffset:Int = 0;
@@ -228,19 +229,20 @@ class ClientPrefs {
 		}
 		#end
 
+		var fps:Int = data.unlimitedFPS ? 999 : data.framerate;
 		if (data.fpsRework)
-			FlxG.stage.window.frameRate = data.framerate;
+			FlxG.stage.window.frameRate = fps;
 		else
 		{
-			if (data.framerate > FlxG.drawFramerate)
+			if (fps > FlxG.drawFramerate)
 			{
-				FlxG.updateFramerate = data.framerate;
-				FlxG.drawFramerate = data.framerate;
+				FlxG.updateFramerate = fps;
+				FlxG.drawFramerate = fps;
 			}
 			else
 			{
-				FlxG.drawFramerate = data.framerate;
-				FlxG.updateFramerate = data.framerate;
+				FlxG.drawFramerate = fps;
+				FlxG.updateFramerate = fps;
 			}
 		}
 
