@@ -57,6 +57,7 @@ class FreeplayState extends MusicBeatState
 	// Search
 	var searchString:String = '';
 	var searchText:FlxText;
+	var searchBG:FlxSprite;
 	var searching:Bool = false;
 	var filtered:Array<Int> = [];
 	var curFiltered:Int = 0;
@@ -205,12 +206,25 @@ class FreeplayState extends MusicBeatState
 		changeSelection();
 		updateTexts();
 
-		// Search bar UI
-		searchText = new FlxText(8, FlxG.height - 36, FlxG.width - 16, '', 18);
-		searchText.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		// Search bar UI (top center) - works on desktop + mobile
+		searchBG = new FlxSprite(0, 12).makeGraphic(Std.int(FlxG.width * 0.6), 36, FlxColor.BLACK);
+		searchBG.alpha = 0.6;
+		searchBG.screenCenter(X);
+		searchBG.scrollFactor.set();
+		add(searchBG);
+
+		searchText = new FlxText(searchBG.x + 10, 16, searchBG.width - 20, '', 20);
+		searchText.setFormat(Paths.font('vcr.ttf'), 20, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		searchText.scrollFactor.set();
 		add(searchText);
+		searching = true;
 		updateSearchLabel();
+
+		// Mobile soft keyboard / text input
+		FlxG.stage.window.onTextInput.add(onMobileTextInput);
+		#if mobile
+		FlxG.stage.window.textInputEnabled = true;
+		#end
 
 		rebuildFilter();
 
@@ -224,7 +238,7 @@ class FreeplayState extends MusicBeatState
 		persistentUpdate = true;
 		super.closeSubState();
 		removeTouchPad();
-		addTouchPad('LEFT_FULL', 'A_B_C_X_Y_Z');
+		
 	}
 
 	public function addSong(songName:String, weekNum:Int, songCharacter:String, color:Int)
@@ -275,17 +289,18 @@ class FreeplayState extends MusicBeatState
 			scoreText.text = Language.getPhrase('personal_best', 'PERSONAL BEST: {1} ({2}%)', [lerpScore, ratingSplit.join('.')]);
 			positionHighscore();
 
-			// Search mode: type to filter. ESC closes. F/C opens when not searching.
-			if (searching)
-			{
-				handleSearchInput();
-			}
-			else if (FlxG.keys.justPressed.F || (controls.mobileC && touchPad != null && touchPad.buttonC != null && touchPad.buttonC.justPressed))
+			// Top search bar: type to filter songs (Backspace deletes, Esc clears)
+			// Mobile: tap the bar to open soft keyboard
+			if (FlxG.mouse.justPressed && searchBG != null && FlxG.mouse.overlaps(searchBG))
 			{
 				searching = true;
-				updateSearchLabel();
+				#if mobile
+				FlxG.stage.window.textInputEnabled = true;
+				#end
 			}
-			else if(songs.length > 1)
+			handleSearchInput();
+
+			if(songs.length > 1)
 			{
 				if(FlxG.keys.justPressed.HOME)
 				{
@@ -645,6 +660,13 @@ class FreeplayState extends MusicBeatState
 
 	override function destroy():Void
 	{
+		if (FlxG.stage != null && FlxG.stage.window != null)
+		{
+			FlxG.stage.window.onTextInput.remove(onMobileTextInput);
+			#if mobile
+			FlxG.stage.window.textInputEnabled = false;
+			#end
+		}
 		super.destroy();
 
 		FlxG.autoPause = ClientPrefs.data.autoPause;
@@ -655,25 +677,36 @@ class FreeplayState extends MusicBeatState
 	function updateSearchLabel():Void
 	{
 		if (searchText == null) return;
-		if (searching)
-			searchText.text = 'Search: ' + searchString + '_  (Esc/Enter to close)';
-		else if (searchString.length > 0)
-			searchText.text = 'Filter: "' + searchString + '"  (' + filtered.length + ' songs)  [F/C to edit]';
+		if (searchString.length > 0)
+			searchText.text = searchString + '_';
 		else
-			searchText.text = 'Press F (or C on mobile) to search songs...';
+			searchText.text = #if mobile 'Tap to search songs...' #else 'Search songs...' #end;
+	}
+
+	function onMobileTextInput(text:String):Void
+	{
+		if (text == null || text.length < 1) return;
+		// Some soft keyboards send newline on Enter
+		if (text == '\n' || text == '\r') return;
+		searchString += text.toLowerCase();
+		rebuildFilter();
+		updateSearchLabel();
 	}
 
 	function handleSearchInput():Void
 	{
 		if (FlxG.keys.justPressed.ESCAPE)
 		{
-			searching = false;
-			updateSearchLabel();
+			if (searchString.length > 0)
+			{
+				searchString = '';
+				rebuildFilter();
+				updateSearchLabel();
+			}
 			return;
 		}
 		if (FlxG.keys.justPressed.ENTER)
 		{
-			searching = false;
 			rebuildFilter();
 			updateSearchLabel();
 			return;
