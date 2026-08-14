@@ -24,7 +24,7 @@ on:
 
 env:
   HAXE_VERSION: 4.3.6
-  PROJECT_NAME: PsychEngine
+  PROJECT_NAME: ZenithEngine
 
 jobs:
   build:
@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: false
@@ -86,9 +86,20 @@ jobs:
           mv ${{ env.PROJECT_NAME }}.app Payload
           zip -r ${{ env.PROJECT_NAME }}.ipa Payload
 
+      - name: Stage Artifacts (Klasör Hiyerarşisini Temizle)
+        shell: bash
+        run: |
+          mkdir -p staging
+          shopt -s globstar
+          for f in ${{ inputs.artifactPath }}; do
+            if [ -f "$f" ]; then
+              cp "$f" staging/
+            fi
+          done
+
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifactName }}
-          path: ${{ inputs.artifactPath }}
+          path: staging/*
           if-no-files-found: error
