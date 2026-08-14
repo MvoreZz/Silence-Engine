@@ -6,7 +6,7 @@ permissions:
   discussions: write
 
 env:
-  PROJECT_NAME: ZenithEngine
+  PROJECT_NAME: SilenceEngine
   VERSION: 1.1.0  
 
 jobs:
