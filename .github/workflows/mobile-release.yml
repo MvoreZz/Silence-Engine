@@ -7,7 +7,7 @@ permissions:
 
 env:
   PROJECT_NAME: SilenceEngine
-  VERSION: 1.1.0  
+  VERSION: 1.1.0
 
 jobs:
   get-commit-hash:
@@ -70,11 +70,12 @@ jobs:
         run: |
           mkdir -p /home/runner/release_files
           
-          # Android APK'sını ZIP olarak paketle
+          # Android APK adındaki -debug ekini kaldırır ve zipleştirir
           cd /home/runner/android_temp
-          zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.zip *.apk
+          mv *.apk ${{ env.PROJECT_NAME }}.apk
+          zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.zip ${{ env.PROJECT_NAME }}.apk
           
-          # iOS IPA'sını ZIP olarak paketle
+          # iOS IPA dosyasını zipleştirir
           cd ${{ github.workspace }}
           zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.zip ${{ env.PROJECT_NAME }}.ipa
 
