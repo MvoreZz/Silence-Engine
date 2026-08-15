@@ -86,7 +86,7 @@ jobs:
           mv ${{ env.PROJECT_NAME }}.app Payload
           zip -r ${{ env.PROJECT_NAME }}.ipa Payload
 
-      - name: Stage Artifacts (Klasör Hiyerarşisini Temizle)
+      - name: Stage Artifacts
         shell: bash
         run: |
           mkdir -p staging
