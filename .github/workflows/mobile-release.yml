@@ -70,12 +70,10 @@ jobs:
         run: |
           mkdir -p /home/runner/release_files
           
-          # Android APK adındaki -debug ekini kaldırır ve zipleştirir
           cd /home/runner/android_temp
           mv *.apk ${{ env.PROJECT_NAME }}.apk
           zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.zip ${{ env.PROJECT_NAME }}.apk
           
-          # iOS IPA dosyasını zipleştirir
           cd ${{ github.workspace }}
           zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.zip ${{ env.PROJECT_NAME }}.ipa
 
