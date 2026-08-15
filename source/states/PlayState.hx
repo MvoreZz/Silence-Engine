@@ -1605,7 +1605,7 @@ class PlayState extends MusicBeatState
 		}
 
 		// Opponent strums near health bar, left side (opposite the icons)
-		final oppY:Float = (healthBar != null) ? (healthBar.y + healthBar.height - 2) : 46;
+		final oppY:Float = (healthBar != null) ? (healthBar.y - 2) : 40; // aligned with health bar
 		for (i in 0...opponentStrums.length)
 		{
 			var s:StrumNote = opponentStrums.members[i];
