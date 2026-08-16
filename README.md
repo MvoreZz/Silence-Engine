@@ -17,6 +17,9 @@ For this you can head over to [the wiki](https://shadowmario.github.io/psychengi
 
 There you can learn how to use the 212 PlayState funcions in your mod!
 
+## Silence Engine Credits:
+* MvoreZz - Main Programmer of Silence Engine
+
 ## Mobile Credits:
 * Homura - Head Porter of Psych Engine Mobile.
 * Karim - Second Porter of Psych Engine Mobile.
