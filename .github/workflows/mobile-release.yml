@@ -55,13 +55,13 @@ jobs:
     permissions: write-all
     steps:
       - name: Download Android Build
-        uses: actions/download-artifact@v4.1.9
+        uses: actions/download-artifact@v4
         with:
            name: AndroidBuild
            path: /home/runner/android_temp
 
       - name: Download iOS Build
-        uses: actions/download-artifact@v4.1.9
+        uses: actions/download-artifact@v4
         with:
            name: iOSBuild
            path: ${{ github.workspace }}
