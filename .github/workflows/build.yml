@@ -32,14 +32,14 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
           submodules: false
 
       - name: Setup Java JDK
         if: inputs.name == 'Android'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -93,12 +93,13 @@ jobs:
           shopt -s globstar
           for f in ${{ inputs.artifactPath }}; do
             if [ -f "$f" ]; then
-              cp "$f" staging/
+              # Ismi ne olursa olsun staging klasorune direkt seninengineadin.apk olarak kopyala
+              cp "$f" "staging/${{ env.PROJECT_NAME }}.apk"
             fi
           done
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.1
         with:
           name: ${{ inputs.artifactName }}
           path: staging/*
