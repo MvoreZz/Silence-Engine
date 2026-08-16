@@ -93,7 +93,6 @@ jobs:
           shopt -s globstar
           for f in ${{ inputs.artifactPath }}; do
             if [ -f "$f" ]; then
-              # Ismi ne olursa olsun staging klasorune direkt seninengineadin.apk olarak kopyala
               cp "$f" "staging/${{ env.PROJECT_NAME }}.apk"
             fi
           done
