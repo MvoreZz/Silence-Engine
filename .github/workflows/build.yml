@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ inputs.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: false
@@ -45,7 +45,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Haxe
-        uses: krdlab/setup-haxe@master
+        uses: krdlab/setup-haxe@v1
         with:
           haxe-version: ${{ env.HAXE_VERSION }}
 
@@ -86,9 +86,20 @@ jobs:
           mv ${{ env.PROJECT_NAME }}.app Payload
           zip -r ${{ env.PROJECT_NAME }}.ipa Payload
 
+      - name: Stage Artifacts
+        shell: bash
+        run: |
+          mkdir -p staging
+          shopt -s globstar
+          for f in ${{ inputs.artifactPath }}; do
+            if [ -f "$f" ]; then
+              cp "$f" "staging/${{ env.PROJECT_NAME }}.apk"
+            fi
+          done
+
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4.6.1
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifactName }}
-          path: ${{ inputs.artifactPath }}
+          path: staging/*
           if-no-files-found: error
