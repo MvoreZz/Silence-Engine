@@ -21,46 +21,47 @@ jobs:
     name: ${{ matrix.name }}
     needs: get-commit-hash
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Windows
             os: windows-2022
-            buildArgs: windows
+            buildArgs: "windows -release -final"
             setupCommand: '.\setup\windows.bat'
             artifactName: windowsBuild-x86_64
-            artifactPath: 'export\release\windows\bin\*'
+            artifactPath: 'export/release/windows/bin/**'
 
           - name: Linux
             os: ubuntu-22.04
-            buildArgs: linux
+            buildArgs: "linux -release -final"
             setupCommand: sh ./setup/unix.sh
             artifactName: linuxBuild-x86_64
-            artifactPath: export/release/linux/bin/*
+            artifactPath: 'export/release/linux/bin/**'
 
           - name: macOS x86_64
             os: macos-15
             setupCommand: sh ./setup/unix.sh
-            buildArgs: "mac -64 -D HXCPP_M64"
+            buildArgs: "mac -64 -release -final"
             artifactName: macOSBuild-x86_64
-            artifactPath: export/release/macos/bin/*
+            artifactPath: 'export/release/macos/bin/**'
 
           - name: macOS ARM64
             os: macos-15
             setupCommand: sh ./setup/unix.sh
-            buildArgs: "mac -arm64 -D HXCPP_ARM64"
+            buildArgs: "mac -arm64 -release -final"
             artifactName: macOSBuild-arm64
-            artifactPath: export/release/macos/bin/*
+            artifactPath: 'export/release/macos/bin/**'
 
           - name: Android
             os: macos-15
-            buildArgs: "android -armv7 -arm64"
+            buildArgs: "android -release -final"
             setupCommand: sh ./setup/unix.sh
             artifactName: androidBuild
-            artifactPath: "export/release/android/bin/app/build/outputs/apk/release/*.apk"
+            artifactPath: "export/release/android/**/*.apk"
 
           - name: iOS
             os: macos-15
-            buildArgs: "ios -nosign"
+            buildArgs: "ios -release -final -nosign"
             setupCommand: sh ./setup/unix.sh
             artifactName: iOSBuild
             artifactPath: "export/release/ios/build/Release-iphoneos/*.ipa"
@@ -83,57 +84,63 @@ jobs:
     steps:
       - name: Download Windows Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: windowsBuild-x86_64
           path: /home/runner/artifacts/windows
 
       - name: Zip Windows Build
-        run: zip -r /home/runner/Silence-Engine-Windows-x86_64.zip /home/runner/artifacts/windows
+        run: zip -r /home/runner/Silence-Engine-Windows-x86_64.zip /home/runner/artifacts/windows || true
 
       - name: Download Linux Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: linuxBuild-x86_64
           path: /home/runner/artifacts/linux
 
       - name: Zip Linux Build
-        run: zip -r /home/runner/Silence-Engine-Linux-x86_64.zip /home/runner/artifacts/linux
+        run: zip -r /home/runner/Silence-Engine-Linux-x86_64.zip /home/runner/artifacts/linux || true
 
       - name: Download macOS x86_64 Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: macOSBuild-x86_64
           path: /home/runner/artifacts/macos-x86_64
 
       - name: Zip macOS x86_64 Build
-        run: zip -r /home/runner/Silence-Engine-MacOS-x86_64.zip /home/runner/artifacts/macos-x86_64
+        run: zip -r /home/runner/Silence-Engine-MacOS-x86_64.zip /home/runner/artifacts/macos-x86_64 || true
 
       - name: Download macOS ARM64 Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: macOSBuild-arm64
           path: /home/runner/artifacts/macos-arm64
 
       - name: Zip macOS ARM64 Build
-        run: zip -r /home/runner/Silence-Engine-MacOS-arm64.zip /home/runner/artifacts/macos-arm64
+        run: zip -r /home/runner/Silence-Engine-MacOS-arm64.zip /home/runner/artifacts/macos-arm64 || true
 
       - name: Download Android Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: androidBuild
           path: /home/runner/artifacts/android
 
       - name: Move Android APK
-        run: mv /home/runner/artifacts/android/*.apk /home/runner/Silence-Engine-Android.apk
+        run: mv /home/runner/artifacts/android/*.apk /home/runner/Silence-Engine-Android.apk || true
 
       - name: Download iOS Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: iOSBuild
           path: /home/runner/artifacts/ios
 
       - name: Move iOS IPA
-        run: mv /home/runner/artifacts/ios/*.ipa /home/runner/Silence-Engine-IOS.ipa
+        run: mv /home/runner/artifacts/ios/*.ipa /home/runner/Silence-Engine-IOS.ipa || true
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
