@@ -24,7 +24,7 @@ on:
 
 env:
   HAXE_VERSION: 4.3.7
-  PROJECT_NAME: SilenceEngine
+  PROJECT_NAME: Silence-Engine
 
 jobs:
   build:
@@ -35,7 +35,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          submodules: false
 
       - name: Setup Java JDK
         if: inputs.name == 'Android'
@@ -59,7 +58,7 @@ jobs:
 
       - name: Install libVLC
         if: contains(inputs.name, 'Linux')
-        run: sudo apt install libvlc-dev libvlccore-dev
+        run: sudo apt update && sudo apt install -y libvlc-dev libvlccore-dev
 
       - name: Install Libraries
         run: ${{ inputs.setupCommand }}
@@ -79,27 +78,16 @@ jobs:
         if: inputs.name == 'iOS'
         run: |
           brew install ldid
-          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app
-          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }}
+          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app || exit 1
+          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }} || true
           cd ..
           mkdir Payload
           mv ${{ env.PROJECT_NAME }}.app Payload
           zip -r ${{ env.PROJECT_NAME }}.ipa Payload
 
-      - name: Stage Artifacts
-        shell: bash
-        run: |
-          mkdir -p staging
-          shopt -s globstar
-          for f in ${{ inputs.artifactPath }}; do
-            if [ -f "$f" ]; then
-              cp "$f" "staging/${{ env.PROJECT_NAME }}.apk"
-            fi
-          done
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifactName }}
-          path: staging/*
+          path: ${{ inputs.artifactPath }}
           if-no-files-found: error
