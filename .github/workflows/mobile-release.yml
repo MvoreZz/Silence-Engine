@@ -8,6 +8,7 @@ permissions:
 env:
   PROJECT_NAME: SilenceEngine
   VERSION: 1.1.0
+  HAXE_VERSION: 4.3.7
 
 jobs:
   get-commit-hash:
@@ -19,39 +20,95 @@ jobs:
         id: get_commit_hash
         run: |
           commit_hash=${GITHUB_SHA::7}
-          echo "Latest commit hash is $commit_hash"
           echo "COMMIT_HASH=$commit_hash" >> $GITHUB_OUTPUT
 
-  build:
-    name: ${{ matrix.name }}
+  build-android:
+    name: Build Android
     needs: get-commit-hash
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Android
-            os: ubuntu-latest
-            buildArgs: "android -release -final -D officialBuild"
-            setupCommand: sh ./setup/unix.sh
-            artifactName: AndroidBuild
-            artifactPath: "export/release/android/**/*.apk"
-          - name: iOS
-            os: macos-13
-            setupCommand: sh ./setup/unix.sh
-            buildArgs: "ios -release -final -nosign -D officialBuild"
-            artifactName: iOSBuild
-            artifactPath: "export/release/ios/build/Release-iphoneos/*.ipa"
-    uses: ./.github/workflows/build.yml
-    with:
-        name: ${{ matrix.name }}
-        os: ${{ matrix.os }}
-        setupCommand: ${{ matrix.setupCommand }}
-        buildArgs: ${{ matrix.buildArgs }}
-        artifactName: ${{ matrix.artifactName }}
-        artifactPath: ${{ matrix.artifactPath }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@main
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Install Libraries
+        run: sh ./setup/unix.sh
+
+      - name: Configure Android
+        run: |
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT ${{ steps.setup-ndk.outputs.ndk-path }}
+          haxelib run lime config JAVA_HOME $JAVA_HOME
+          haxelib run lime config ANDROID_SETUP true
+
+      - name: Compile Android
+        run: haxelib run lime build android -release -final -D officialBuild
+
+      - name: Stage Android APK
+        run: |
+          mkdir -p staging
+          cp export/release/android/bin/app/build/outputs/apk/release/*.apk staging/ 2>/dev/null || cp export/release/android/**/*.apk staging/
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AndroidBuild
+          path: staging/*
+
+  build-ios:
+    name: Build iOS
+    needs: get-commit-hash
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Install Libraries
+        run: sh ./setup/unix.sh
+
+      - name: Compile iOS
+        run: haxelib run lime build ios -release -final -nosign -D officialBuild
+
+      - name: Make IPA
+        run: |
+          brew install ldid || true
+          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app || exit 1
+          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }} || true
+          cd ..
+          mkdir Payload
+          mv ${{ env.PROJECT_NAME }}.app Payload
+          zip -r ${{ env.PROJECT_NAME }}.ipa Payload
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOSBuild
+          path: export/release/ios/build/Release-iphoneos/*.ipa
 
   Releaser:
-    needs: [get-commit-hash, build]
+    needs: [get-commit-hash, build-android, build-ios]
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
