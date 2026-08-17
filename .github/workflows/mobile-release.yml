@@ -66,15 +66,15 @@ jobs:
            name: iOSBuild
            path: ${{ github.workspace }}
 
-      - name: Package Zips For Release
+      - name: Prepare Release Files
         run: |
           mkdir -p /home/runner/release_files
           
           cd /home/runner/android_temp
-          zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.zip *.apk
+          mv *.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.apk
           
           cd ${{ github.workspace }}
-          zip -j /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.zip ${{ env.PROJECT_NAME }}.ipa
+          mv *.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.ipa
 
       - name: Publish The Release
         uses: softprops/action-gh-release@v2
@@ -83,4 +83,4 @@ jobs:
           tag_name: "devbuild-${{ needs.get-commit-hash.outputs.commit_hash }}"
           prerelease: true
           files: |
-            /home/runner/release_files/*.zip
+            /home/runner/release_files/*
