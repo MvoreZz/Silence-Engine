@@ -94,7 +94,7 @@ jobs:
         run: sh ./setup/unix.sh
 
       - name: Compile iOS
-        run: haxelib run lime build ios -release -final -nosign -D officialBuild
+        run: arch -x86_64 haxelib run lime build ios -release -final -nosign -D officialBuild
 
       - name: Make IPA
         run: |
