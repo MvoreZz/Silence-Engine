@@ -7,7 +7,7 @@ permissions:
 
 env:
   PROJECT_NAME: SilenceEngine
-  VERSION: 1.0.0
+  VERSION: 1.1.0
   HAXE_VERSION: 4.3.7
 
 jobs:
@@ -75,7 +75,7 @@ jobs:
   build-ios:
     name: Build iOS
     needs: get-commit-hash
-    runs-on: macos-14
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -89,7 +89,7 @@ jobs:
         run: sh ./setup/unix.sh
 
       - name: Compile iOS
-        run: haxelib run lime build ios -release -final -nosign -D officialBuild -D HXCPP_ARM64
+        run: haxelib run lime build ios -arm64 -release -final -nosign -D officialBuild
 
       - name: Make IPA
         run: |
