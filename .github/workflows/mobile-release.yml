@@ -80,10 +80,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '15.2'
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
 
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
@@ -91,15 +89,15 @@ jobs:
           haxe-version: ${{ env.HAXE_VERSION }}
 
       - name: Install Libraries
-        shell: arch -x86_64 bash {0}
         run: sh ./setup/unix.sh
 
+      - name: Configure Lime iOS
+        run: haxelib run lime config IOS_SDK iphoneos
+
       - name: Compile iOS
-        shell: arch -x86_64 bash {0}
-        run: haxelib run lime build ios -release -final -nosign -D officialBuild
+        run: haxelib run lime build ios -device -release -final -nosign -D officialBuild -D HXCPP_ARM64
 
       - name: Make IPA
-        shell: arch -x86_64 bash {0}
         run: |
           brew install ldid || true
           cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app || exit 1
