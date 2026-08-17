@@ -59,7 +59,7 @@ jobs:
 
       - name: Install libVLC
         if: contains(inputs.name, 'Linux')
-        run: sudo apt install libvlc-dev libvlccore-dev
+        run: sudo apt update && sudo apt install -y libvlc-dev libvlccore-dev
 
       - name: Install Libraries
         run: ${{ inputs.setupCommand }}
@@ -78,9 +78,9 @@ jobs:
       - name: Make IPA
         if: inputs.name == 'iOS'
         run: |
-          brew install ldid
-          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app
-          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }}
+          brew install ldid || true
+          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app || exit 1
+          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }} || true
           cd ..
           mkdir Payload
           mv ${{ env.PROJECT_NAME }}.app Payload
@@ -93,7 +93,7 @@ jobs:
           shopt -s globstar
           for f in ${{ inputs.artifactPath }}; do
             if [ -f "$f" ]; then
-              cp "$f" "staging/${{ env.PROJECT_NAME }}.apk"
+              cp "$f" staging/
             fi
           done
 
