@@ -29,28 +29,28 @@ jobs:
             buildArgs: "windows -release -final"
             setupCommand: '.\setup\windows.bat'
             artifactName: windowsBuild-x86_64
-            artifactPath: 'export/release/windows/bin/**'
+            artifactPath: 'export/release/windows/bin'
 
           - name: Linux
             os: ubuntu-22.04
             buildArgs: "linux -release -final"
             setupCommand: sh ./setup/unix.sh
             artifactName: linuxBuild-x86_64
-            artifactPath: 'export/release/linux/bin/**'
+            artifactPath: 'export/release/linux/bin'
 
           - name: macOS x86_64
             os: macos-15
             setupCommand: sh ./setup/unix.sh
             buildArgs: "mac -64 -release -final"
             artifactName: macOSBuild-x86_64
-            artifactPath: 'export/release/macos/bin/**'
+            artifactPath: 'export/release/macos/bin'
 
           - name: macOS ARM64
             os: macos-15
             setupCommand: sh ./setup/unix.sh
             buildArgs: "mac -arm64 -release -final"
             artifactName: macOSBuild-arm64
-            artifactPath: 'export/release/macos/bin/**'
+            artifactPath: 'export/release/macos/bin'
 
           - name: Android
             os: macos-15
@@ -90,7 +90,7 @@ jobs:
           path: /home/runner/artifacts/windows
 
       - name: Zip Windows Build
-        run: zip -r /home/runner/Silence-Engine-Windows-x86_64.zip /home/runner/artifacts/windows || true
+        run: zip -r /home/runner/Silence-Engine-Windows-x86_64.zip /home/runner/artifacts/windows/* || true
 
       - name: Download Linux Build
         uses: actions/download-artifact@v4
@@ -100,7 +100,7 @@ jobs:
           path: /home/runner/artifacts/linux
 
       - name: Zip Linux Build
-        run: zip -r /home/runner/Silence-Engine-Linux-x86_64.zip /home/runner/artifacts/linux || true
+        run: zip -r /home/runner/Silence-Engine-Linux-x86_64.zip /home/runner/artifacts/linux/* || true
 
       - name: Download macOS x86_64 Build
         uses: actions/download-artifact@v4
@@ -110,7 +110,7 @@ jobs:
           path: /home/runner/artifacts/macos-x86_64
 
       - name: Zip macOS x86_64 Build
-        run: zip -r /home/runner/Silence-Engine-MacOS-x86_64.zip /home/runner/artifacts/macos-x86_64 || true
+        run: zip -r /home/runner/Silence-Engine-MacOS-x86_64.zip /home/runner/artifacts/macos-x86_64/* || true
 
       - name: Download macOS ARM64 Build
         uses: actions/download-artifact@v4
@@ -120,7 +120,7 @@ jobs:
           path: /home/runner/artifacts/macos-arm64
 
       - name: Zip macOS ARM64 Build
-        run: zip -r /home/runner/Silence-Engine-MacOS-arm64.zip /home/runner/artifacts/macos-arm64 || true
+        run: zip -r /home/runner/Silence-Engine-MacOS-arm64.zip /home/runner/artifacts/macos-arm64/* || true
 
       - name: Download Android Build
         uses: actions/download-artifact@v4
