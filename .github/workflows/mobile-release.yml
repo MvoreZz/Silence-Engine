@@ -75,10 +75,15 @@ jobs:
   build-ios:
     name: Build iOS
     needs: get-commit-hash
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
 
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1
@@ -89,7 +94,7 @@ jobs:
         run: sh ./setup/unix.sh
 
       - name: Compile iOS
-        run: haxelib run lime build ios -arm64 -release -final -nosign -D officialBuild
+        run: haxelib run lime build ios -release -final -nosign -D officialBuild
 
       - name: Make IPA
         run: |
