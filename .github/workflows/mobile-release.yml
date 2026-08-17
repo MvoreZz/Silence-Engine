@@ -26,6 +26,7 @@ jobs:
     name: ${{ matrix.name }}
     needs: get-commit-hash
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Android
@@ -56,25 +57,29 @@ jobs:
     steps:
       - name: Download Android Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
            name: AndroidBuild
            path: /home/runner/android_temp
 
       - name: Download iOS Build
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
            name: iOSBuild
-           path: ${{ github.workspace }}
+           path: /home/runner/ios_temp
 
       - name: Prepare Release Files
         run: |
           mkdir -p /home/runner/release_files
-          
-          cd /home/runner/android_temp
-          mv *.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.apk
-          
-          cd ${{ github.workspace }}
-          mv *.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.ipa
+
+          if compgen -G "/home/runner/android_temp/*.apk" > /dev/null; then
+            mv /home/runner/android_temp/*.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.apk
+          fi
+
+          if compgen -G "/home/runner/ios_temp/*.ipa" > /dev/null; then
+            mv /home/runner/ios_temp/*.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.ipa
+          fi
 
       - name: Publish The Release
         uses: softprops/action-gh-release@v2
