@@ -3,9 +3,6 @@ name: Main
 on:
   workflow_dispatch:
 
-env:
-  PROJECT_NAME: Silence-Engine
-
 jobs:
   get-commit-hash:
     name: Get Commit Hash
@@ -32,28 +29,28 @@ jobs:
             buildArgs: "windows -release -final -D officialBuild"
             setupCommand: '.\setup\windows.bat'
             artifactName: windowsBuild-x86_64
-            artifactPath: 'export\release\windows\bin\*'
+            artifactPath: 'export/release/windows/bin/**'
 
           - name: Linux
             os: ubuntu-22.04
             buildArgs: "linux -release -final -D officialBuild"
             setupCommand: sh ./setup/unix.sh
             artifactName: linuxBuild-x86_64
-            artifactPath: export/release/linux/bin/*
+            artifactPath: 'export/release/linux/bin/**'
 
           - name: macOS x86_64
             os: macos-13
             setupCommand: sh ./setup/unix.sh
-            buildArgs: "mac -64 -D HXCPP_M64 -release -final -D officialBuild"
+            buildArgs: "mac -64 -release -final -D officialBuild"
             artifactName: macOSBuild-x86_64
-            artifactPath: export/release/macos/bin/*
+            artifactPath: 'export/release/macos/bin/**'
 
           - name: macOS ARM64
-            os: macos-14
+            os: macos-13
             setupCommand: sh ./setup/unix.sh
-            buildArgs: "mac -arm64 -D HXCPP_ARM64 -release -final -D officialBuild"
+            buildArgs: "mac -release -final -D officialBuild"
             artifactName: macOSBuild-arm64
-            artifactPath: export/release/macos/bin/*
+            artifactPath: 'export/release/macos/bin/**'
 
           - name: Android
             os: ubuntu-latest
@@ -92,12 +89,18 @@ jobs:
           name: windowsBuild-x86_64
           path: /home/runner/artifacts/windows
 
+      - name: Zip Windows Build
+        run: zip -r /home/runner/Silence-Engine-Windows-x86_64.zip /home/runner/artifacts/windows || true
+
       - name: Download Linux Build
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: linuxBuild-x86_64
           path: /home/runner/artifacts/linux
+
+      - name: Zip Linux Build
+        run: zip -r /home/runner/Silence-Engine-Linux-x86_64.zip /home/runner/artifacts/linux || true
 
       - name: Download macOS x86_64 Build
         uses: actions/download-artifact@v4
@@ -106,12 +109,18 @@ jobs:
           name: macOSBuild-x86_64
           path: /home/runner/artifacts/macos-x86_64
 
+      - name: Zip macOS x86_64 Build
+        run: zip -r /home/runner/Silence-Engine-MacOS-x86_64.zip /home/runner/artifacts/macos-x86_64 || true
+
       - name: Download macOS ARM64 Build
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: macOSBuild-arm64
           path: /home/runner/artifacts/macos-arm64
+
+      - name: Zip macOS ARM64 Build
+        run: zip -r /home/runner/Silence-Engine-MacOS-arm64.zip /home/runner/artifacts/macos-arm64 || true
 
       - name: Download Android Build
         uses: actions/download-artifact@v4
@@ -120,6 +129,9 @@ jobs:
           name: androidBuild
           path: /home/runner/artifacts/android
 
+      - name: Move Android APK
+        run: mv /home/runner/artifacts/android/*.apk /home/runner/Silence-Engine-Android.apk || true
+
       - name: Download iOS Build
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -127,33 +139,8 @@ jobs:
           name: iOSBuild
           path: /home/runner/artifacts/ios
 
-      - name: Prepare Release Files
-        run: |
-          mkdir -p /home/runner/release_files
-
-          if [ -d "/home/runner/artifacts/windows" ]; then
-            zip -r /home/runner/release_files/${{ env.PROJECT_NAME }}-Windows-x86_64.zip /home/runner/artifacts/windows
-          fi
-
-          if [ -d "/home/runner/artifacts/linux" ]; then
-            zip -r /home/runner/release_files/${{ env.PROJECT_NAME }}-Linux-x86_64.zip /home/runner/artifacts/linux
-          fi
-
-          if [ -d "/home/runner/artifacts/macos-x86_64" ]; then
-            zip -r /home/runner/release_files/${{ env.PROJECT_NAME }}-MacOS-x86_64.zip /home/runner/artifacts/macos-x86_64
-          fi
-
-          if [ -d "/home/runner/artifacts/macos-arm64" ]; then
-            zip -r /home/runner/release_files/${{ env.PROJECT_NAME }}-MacOS-arm64.zip /home/runner/artifacts/macos-arm64
-          fi
-
-          if [ -d "/home/runner/artifacts/android" ]; then
-            mv /home/runner/artifacts/android/*.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-Android.apk 2>/dev/null || true
-          fi
-
-          if [ -d "/home/runner/artifacts/ios" ]; then
-            mv /home/runner/artifacts/ios/*.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-IOS.ipa 2>/dev/null || true
-          fi
+      - name: Move iOS IPA
+        run: mv /home/runner/artifacts/ios/*.ipa /home/runner/Silence-Engine-IOS.ipa || true
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
@@ -162,4 +149,9 @@ jobs:
           tag_name: "devbuild-${{ needs.get-commit-hash.outputs.commit_hash }}"
           prerelease: true
           files: |
-            /home/runner/release_files/*
+            /home/runner/Silence-Engine-Windows-x86_64.zip
+            /home/runner/Silence-Engine-Linux-x86_64.zip
+            /home/runner/Silence-Engine-MacOS-x86_64.zip
+            /home/runner/Silence-Engine-MacOS-arm64.zip
+            /home/runner/Silence-Engine-Android.apk
+            /home/runner/Silence-Engine-IOS.ipa
