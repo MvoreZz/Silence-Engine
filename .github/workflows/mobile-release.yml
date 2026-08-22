@@ -12,15 +12,17 @@ env:
 
 jobs:
   get-commit-hash:
+    name: Get Commit Hash
     runs-on: ubuntu-latest
     outputs:
-      commit_hash: ${{ steps.get_commit_hash.outputs.COMMIT_HASH }}
+      commit_hash: ${{ steps.get_hash.outputs.commit_hash }}
     steps:
-      - name: Get latest commit hash
-        id: get_commit_hash
-        run: |
-          commit_hash=${GITHUB_SHA::7}
-          echo "COMMIT_HASH=$commit_hash" >> $GITHUB_OUTPUT
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Short Commit Hash
+        id: get_hash
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
   build-android:
     name: Build Android
@@ -83,7 +85,7 @@ jobs:
       - name: Upload Android Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AndroidBuild
+          name: androidBuild
           path: staging/*
 
   build-ios:
@@ -157,41 +159,40 @@ jobs:
           path: export/release/ios/build/Release-iphoneos/*.ipa
 
   Releaser:
+    name: Releaser
     needs: [get-commit-hash, build-android, build-ios]
     runs-on: ubuntu-latest
     permissions: write-all
+
     steps:
       - name: Download Android Build
         uses: actions/download-artifact@v4
-        continue-on-error: true
         with:
-           name: AndroidBuild
-           path: /home/runner/android_temp
+          name: androidBuild
+          path: /home/runner/artifacts/android
+
+      - name: Move Android APK
+        run: |
+          mkdir -p /home/runner/release_files
+          mv /home/runner/artifacts/android/*.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-Android.apk
 
       - name: Download iOS Build
         uses: actions/download-artifact@v4
-        continue-on-error: true
         with:
-           name: iOSBuild
-           path: /home/runner/ios_temp
+          name: iOSBuild
+          path: /home/runner/artifacts/ios
 
-      - name: Prepare Release Files
+      - name: Move iOS IPA
         run: |
           mkdir -p /home/runner/release_files
+          mv /home/runner/artifacts/ios/*.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-IOS.ipa
 
-          if compgen -G "/home/runner/android_temp/*.apk" > /dev/null; then
-            mv /home/runner/android_temp/*.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-Android.apk
-          fi
-
-          if compgen -G "/home/runner/ios_temp/*.ipa" > /dev/null; then
-            mv /home/runner/ios_temp/*.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-iOS.ipa
-          fi
-
-      - name: Publish The Release
+      - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
           name: "DevBuild ${{ needs.get-commit-hash.outputs.commit_hash }}"
           tag_name: "devbuild-${{ needs.get-commit-hash.outputs.commit_hash }}"
           prerelease: true
           files: |
-            /home/runner/release_files/*
+            /home/runner/release_files/${{ env.PROJECT_NAME }}-Android.apk
+            /home/runner/release_files/${{ env.PROJECT_NAME }}-IOS.ipa
