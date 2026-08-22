@@ -1,9 +1,7 @@
-name: Mobile + Release
-on: workflow_dispatch
+name: Main
 
-permissions:
-  contents: write
-  discussions: write
+on:
+  workflow_dispatch:
 
 env:
   PROJECT_NAME: SilenceEngine
@@ -27,16 +25,10 @@ jobs:
   build-android:
     name: Build Android
     needs: get-commit-hash
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Java JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
 
       - name: Setup Haxe
         uses: krdlab/setup-haxe@master
@@ -53,6 +45,9 @@ jobs:
       - name: Install Libraries
         run: |
           sh ./setup/unix.sh
+          echo "=== Haxe Version ==="
+          haxe -version
+          echo "=== Haxelib List (before force set) ==="
           haxelib list
 
       - name: Force correct haxelib versions
@@ -62,31 +57,39 @@ jobs:
           haxelib set flixel git
           haxelib set openfl 9.4.1
           haxelib set HtmlParser 3.4.0
+          echo "=== Haxelib List (after force set) ==="
+          haxelib list
 
       - name: Configure Android
+        shell: bash
         run: |
           haxelib run lime config ANDROID_SDK $ANDROID_HOME
           haxelib run lime config ANDROID_NDK_ROOT ${{ steps.setup-ndk.outputs.ndk-path }}
-          haxelib run lime config JAVA_HOME $JAVA_HOME
+
+          if [ "$RUNNER_ARCH" = "ARM64" ]; then
+            echo "Using ARM64 Java"
+            haxelib run lime config JAVA_HOME $JAVA_HOME_17_arm64
+          else
+            echo "Using X64 Java"
+            haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
+          fi
+
           haxelib run lime config ANDROID_SETUP true
 
-      - name: Compile Android
-        run: haxelib run lime build android -release -final -D officialBuild
+      - name: Compile
+        run: haxelib run lime build android -release -final -ONLY_ARM64 -D officialBuild
 
       - name: Stage Android APK
         run: |
           mkdir -p staging
           find export/release/android -name "*.apk" -exec cp {} staging/ \;
-          if [ -z "$(ls -A staging)" ]; then
-            echo "HATA: Derlenen APK bulunamadi!"
-            exit 1
-          fi
 
-      - name: Upload Android Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: androidBuild
           path: staging/*
+          if-no-files-found: error
 
   build-ios:
     name: Build iOS
@@ -137,7 +140,7 @@ jobs:
       - name: Clean iOS
         run: haxelib run lime clean ios || true
 
-      - name: Compile iOS
+      - name: Compile
         run: haxelib run lime build ios -release -final -nosign -D officialBuild
 
       - name: Make IPA
@@ -152,11 +155,12 @@ jobs:
           mv ${{ env.PROJECT_NAME }}.app Payload
           zip -r ${{ env.PROJECT_NAME }}.ipa Payload
 
-      - name: Upload iOS Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: iOSBuild
           path: export/release/ios/build/Release-iphoneos/*.ipa
+          if-no-files-found: error
 
   Releaser:
     name: Releaser
@@ -172,9 +176,7 @@ jobs:
           path: /home/runner/artifacts/android
 
       - name: Move Android APK
-        run: |
-          mkdir -p /home/runner/release_files
-          mv /home/runner/artifacts/android/*.apk /home/runner/release_files/${{ env.PROJECT_NAME }}-Android.apk
+        run: mv /home/runner/artifacts/android/*.apk /home/runner/Silence-Engine-Android.apk
 
       - name: Download iOS Build
         uses: actions/download-artifact@v4
@@ -183,9 +185,7 @@ jobs:
           path: /home/runner/artifacts/ios
 
       - name: Move iOS IPA
-        run: |
-          mkdir -p /home/runner/release_files
-          mv /home/runner/artifacts/ios/*.ipa /home/runner/release_files/${{ env.PROJECT_NAME }}-IOS.ipa
+        run: mv /home/runner/artifacts/ios/*.ipa /home/runner/Silence-Engine-IOS.ipa
 
       - name: Publish Release
         uses: softprops/action-gh-release@v2
@@ -194,5 +194,5 @@ jobs:
           tag_name: "devbuild-${{ needs.get-commit-hash.outputs.commit_hash }}"
           prerelease: true
           files: |
-            /home/runner/release_files/${{ env.PROJECT_NAME }}-Android.apk
-            /home/runner/release_files/${{ env.PROJECT_NAME }}-IOS.ipa
+            /home/runner/Silence-Engine-Android.apk
+            /home/runner/Silence-Engine-IOS.ipa
