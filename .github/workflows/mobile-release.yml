@@ -83,6 +83,10 @@ jobs:
         run: |
           mkdir -p staging
           find export/release/android -name "*.apk" -exec cp {} staging/ \;
+          cd staging
+          for f in *.apk; do
+            [ -f "$f" ] && mv "$f" "${{ env.PROJECT_NAME }}-release.apk"
+          done
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -153,13 +157,13 @@ jobs:
           cd ..
           mkdir Payload
           mv ${{ env.PROJECT_NAME }}.app Payload
-          zip -r ${{ env.PROJECT_NAME }}.ipa Payload
+          zip -r ${{ env.PROJECT_NAME }}-release.ipa Payload
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: iOSBuild
-          path: export/release/ios/build/Release-iphoneos/*.ipa
+          path: export/release/ios/build/Release-iphoneos/*-release.ipa
           if-no-files-found: error
 
   Releaser:
