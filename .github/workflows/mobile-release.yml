@@ -74,7 +74,11 @@ jobs:
       - name: Stage Android APK
         run: |
           mkdir -p staging
-          cp export/release/android/bin/app/build/outputs/apk/release/*.apk staging/ 2>/dev/null || cp export/release/android/**/*.apk staging/
+          find export/release/android -name "*.apk" -exec cp {} staging/ \;
+          if [ -z "$(ls -A staging)" ]; then
+            echo "HATA: Derlenen APK bulunamadi!"
+            exit 1
+          fi
 
       - name: Upload Android Artifact
         uses: actions/upload-artifact@v4
@@ -135,6 +139,8 @@ jobs:
         run: haxelib run lime build ios -release -final -nosign -D officialBuild
 
       - name: Make IPA
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
           brew install ldid
           cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app
