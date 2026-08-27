@@ -45,7 +45,7 @@ jobs:
       - name: Install Libraries
         run: |
           sh ./setup/unix.sh
-          haxelib install SScript 8.1.6 --quiet || true
+          haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
           echo "=== Haxe Version ==="
           haxe -version
           echo "=== Haxelib List (before force set) ==="
@@ -58,7 +58,7 @@ jobs:
           haxelib set flixel git
           haxelib set openfl 9.4.1
           haxelib set HtmlParser 3.4.0
-          haxelib set SScript 8.1.6
+          haxelib set SScript git
           echo "=== Haxelib List (after force set) ==="
           haxelib list
 
@@ -113,7 +113,7 @@ jobs:
       - name: Install Libraries
         run: |
           sh ./setup/unix.sh
-          haxelib install SScript 8.1.6 --quiet || true
+          haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
           echo "=== Haxe Version ==="
           haxe -version
           echo "=== Haxelib List (before force set) ==="
@@ -126,7 +126,7 @@ jobs:
           haxelib set flixel git
           haxelib set openfl 9.4.1
           haxelib set HtmlParser 3.4.0
-          haxelib set SScript 8.1.6
+          haxelib set SScript git
           echo "=== Haxelib List (after force set) ==="
           haxelib list
 
