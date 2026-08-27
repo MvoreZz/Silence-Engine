@@ -53,6 +53,9 @@ class FunkinLua {
 
 	#if HSCRIPT_ALLOWED
 	public var hscript:HScript = null;
+	#if SSCRIPT_LEGACY_ALLOWED
+	public var hscriptLegacy:psychlua.HScriptLegacy = null;
+	#end
 	#end
 
 	public var callbacks:Map<String, Dynamic> = new Map<String, Dynamic>();
