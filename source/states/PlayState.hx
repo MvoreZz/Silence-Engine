@@ -873,8 +873,18 @@ class PlayState extends MusicBeatState
 		#end
 	}
 
-	public function getLuaObject(tag:String):Dynamic
-		return variables.get(tag);
+	/** 0.7.3 + 1.0.4 compatible lua object lookup */
+	public function getLuaObject(tag:String, ?text:Bool = true):Dynamic
+	{
+		#if LUA_ALLOWED
+		if (variables != null && variables.exists(tag))
+			return variables.get(tag);
+		var vars = MusicBeatState.getVariables();
+		if (vars != null && vars.exists(tag))
+			return vars.get(tag);
+		#end
+		return null;
+	}
 
 	function startCharacterPos(char:Character, ?gfCheck:Bool = false) {
 		if(gfCheck && char.curCharacter.startsWith('gf')) { //IF DAD IS GIRLFRIEND, HE GOES TO HER POSITION
