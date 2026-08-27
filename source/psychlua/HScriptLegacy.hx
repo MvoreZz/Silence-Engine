@@ -93,7 +93,7 @@ class HScriptLegacy extends SScript
 		set('FlxTimer', flixel.util.FlxTimer);
 		set('FlxTween', flixel.tweens.FlxTween);
 		set('FlxEase', flixel.tweens.FlxEase);
-		set('FlxColor', CustomFlxColor);
+		set('FlxColor', CustomFlxColorLegacy);
 		set('Countdown', backend.BaseStage.Countdown);
 		set('PlayState', PlayState);
 		set('Paths', Paths);
@@ -443,7 +443,7 @@ class HScriptLegacy extends SScript
 	}
 }
 
-class CustomFlxColor {
+class CustomFlxColorLegacy {
 	public static var TRANSPARENT(default, null):Int = FlxColor.TRANSPARENT;
 	public static var BLACK(default, null):Int = FlxColor.BLACK;
 	public static var WHITE(default, null):Int = FlxColor.WHITE;
