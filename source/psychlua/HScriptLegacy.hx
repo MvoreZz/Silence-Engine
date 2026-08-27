@@ -1,6 +1,6 @@
 package psychlua;
 
-#if (HSCRIPT_ALLOWED && SSCRIPT_LEGACY_ALLOWED)
+#if HSCRIPT_ALLOWED && SSCRIPT_LEGACY_ALLOWED
 
 import flixel.FlxBasic;
 import objects.Character;
