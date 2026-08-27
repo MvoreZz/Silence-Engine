@@ -3697,8 +3697,12 @@ class PlayState extends MusicBeatState
 					if (leg.exists(funcToCall))
 					{
 						var lret = leg.executeCode(funcToCall, args);
-						if (lret != null && !excludeValues.contains(lret) && lret != LuaUtils.Function_Continue)
-							returnVal = lret;
+						if (lret != null && lret.succeeded)
+						{
+							var myValue:Dynamic = lret.returnValue;
+							if (myValue != null && !excludeValues.contains(myValue) && myValue != LuaUtils.Function_Continue)
+								returnVal = myValue;
+						}
 					}
 				} catch (e:Dynamic) {}
 			}
