@@ -1,6 +1,6 @@
 package psychlua;
 
-#if HSCRIPT_ALLOWED && SSCRIPT_LEGACY_ALLOWED
+#if (HSCRIPT_ALLOWED && SSCRIPT_LEGACY_ALLOWED)
 
 import flixel.FlxBasic;
 import objects.Character;
@@ -11,7 +11,6 @@ import psychlua.CustomSubstate;
 import psychlua.FunkinLua;
 #end
 
-#if HSCRIPT_ALLOWED
 import tea.SScript;
 class HScriptLegacy extends SScript
 {
@@ -492,4 +491,5 @@ class CustomFlxColor {
 		return cast FlxColor.fromString(str);
 	}
 }
+#end
 #end
