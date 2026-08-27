@@ -157,33 +157,27 @@ class DeprecatedFunctions
 			Reflect.getProperty(LuaUtils.getTargetInstance(), group)[index].updateHitbox();
 			FunkinLua.luaTrace('updateHitboxFromGroup is deprecated! Use updateHitbox instead.', false, true);
 		});
-		// --- 0.7.3 full Lua aliases ---
+		// ========== 0.7.3 Lua (additive only, 1.0.4 APIs untouched) ==========
 		Lua_helper.add_callback(lua, "getHits", function() {
-			return PlayState.instance.songHits;
+			return PlayState.instance != null ? PlayState.instance.songHits : 0;
 		});
 		Lua_helper.add_callback(lua, "getMisses", function() {
-			return PlayState.instance.songMisses;
+			return PlayState.instance != null ? PlayState.instance.songMisses : 0;
 		});
 		Lua_helper.add_callback(lua, "getScore", function() {
-			return PlayState.instance.songScore;
+			return PlayState.instance != null ? PlayState.instance.songScore : 0;
 		});
 		Lua_helper.add_callback(lua, "getGlobalFromScript", function(luaFile:String, global:String) {
 			var game = PlayState.instance;
 			if (game == null || game.luaArray == null) return;
-			for (luaInstance in game.luaArray)
-			{
-				if (luaInstance.scriptName != null && (StringTools.endsWith(luaInstance.scriptName, luaFile) || luaInstance.scriptName.indexOf(luaFile) != -1))
-				{
+			for (luaInstance in game.luaArray) {
+				if (luaInstance.scriptName != null && luaInstance.scriptName.indexOf(luaFile) != -1) {
 					Lua.getglobal(luaInstance.lua, global);
-					if(Lua.isnumber(luaInstance.lua,-1))
-						Lua.pushnumber(lua, Lua.tonumber(luaInstance.lua, -1));
-					else if(Lua.isstring(luaInstance.lua,-1))
-						Lua.pushstring(lua, Lua.tostring(luaInstance.lua, -1));
-					else if(Lua.isboolean(luaInstance.lua,-1))
-						Lua.pushboolean(lua, Lua.toboolean(luaInstance.lua, -1));
-					else
-						Lua.pushnil(lua);
-					Lua.pop(luaInstance.lua,1);
+					if (Lua.isnumber(luaInstance.lua, -1)) Lua.pushnumber(lua, Lua.tonumber(luaInstance.lua, -1));
+					else if (Lua.isstring(luaInstance.lua, -1)) Lua.pushstring(lua, Lua.tostring(luaInstance.lua, -1));
+					else if (Lua.isboolean(luaInstance.lua, -1)) Lua.pushboolean(lua, Lua.toboolean(luaInstance.lua, -1));
+					else Lua.pushnil(lua);
+					Lua.pop(luaInstance.lua, 1);
 					return;
 				}
 			}
@@ -191,10 +185,8 @@ class DeprecatedFunctions
 		Lua_helper.add_callback(lua, "setGlobalFromScript", function(luaFile:String, global:String, val:Dynamic) {
 			var game = PlayState.instance;
 			if (game == null || game.luaArray == null) return;
-			for (luaInstance in game.luaArray)
-			{
-				if (luaInstance.scriptName != null && (StringTools.endsWith(luaInstance.scriptName, luaFile) || luaInstance.scriptName.indexOf(luaFile) != -1))
-				{
+			for (luaInstance in game.luaArray) {
+				if (luaInstance.scriptName != null && luaInstance.scriptName.indexOf(luaFile) != -1) {
 					luaInstance.set(global, val);
 					return;
 				}
@@ -203,25 +195,23 @@ class DeprecatedFunctions
 		Lua_helper.add_callback(lua, "getGlobals", function(luaFile:String) {
 			var game = PlayState.instance;
 			if (game == null || game.luaArray == null) return;
-			for (luaInstance in game.luaArray)
-			{
-				if (luaInstance.scriptName != null && (StringTools.endsWith(luaInstance.scriptName, luaFile) || luaInstance.scriptName.indexOf(luaFile) != -1))
-				{
+			for (luaInstance in game.luaArray) {
+				if (luaInstance.scriptName != null && luaInstance.scriptName.indexOf(luaFile) != -1) {
 					Lua.newtable(lua);
 					var tableIdx = Lua.gettop(lua);
 					Lua.pushvalue(luaInstance.lua, Lua.LUA_GLOBALSINDEX);
-					while(Lua.next(luaInstance.lua, -2) != 0) {
+					while (Lua.next(luaInstance.lua, -2) != 0) {
 						var pop:Int = 0;
-						if(Lua.isnumber(luaInstance.lua,-2)){ Lua.pushnumber(lua, Lua.tonumber(luaInstance.lua, -2)); pop++; }
-						else if(Lua.isstring(luaInstance.lua,-2)){ Lua.pushstring(lua, Lua.tostring(luaInstance.lua, -2)); pop++; }
-						else if(Lua.isboolean(luaInstance.lua,-2)){ Lua.pushboolean(lua, Lua.toboolean(luaInstance.lua, -2)); pop++; }
-						if(Lua.isnumber(luaInstance.lua,-1)){ Lua.pushnumber(lua, Lua.tonumber(luaInstance.lua, -1)); pop++; }
-						else if(Lua.isstring(luaInstance.lua,-1)){ Lua.pushstring(lua, Lua.tostring(luaInstance.lua, -1)); pop++; }
-						else if(Lua.isboolean(luaInstance.lua,-1)){ Lua.pushboolean(lua, Lua.toboolean(luaInstance.lua, -1)); pop++; }
-						if(pop==2) Lua.rawset(lua, tableIdx);
+						if (Lua.isnumber(luaInstance.lua, -2)) { Lua.pushnumber(lua, Lua.tonumber(luaInstance.lua, -2)); pop++; }
+						else if (Lua.isstring(luaInstance.lua, -2)) { Lua.pushstring(lua, Lua.tostring(luaInstance.lua, -2)); pop++; }
+						else if (Lua.isboolean(luaInstance.lua, -2)) { Lua.pushboolean(lua, Lua.toboolean(luaInstance.lua, -2)); pop++; }
+						if (Lua.isnumber(luaInstance.lua, -1)) { Lua.pushnumber(lua, Lua.tonumber(luaInstance.lua, -1)); pop++; }
+						else if (Lua.isstring(luaInstance.lua, -1)) { Lua.pushstring(lua, Lua.tostring(luaInstance.lua, -1)); pop++; }
+						else if (Lua.isboolean(luaInstance.lua, -1)) { Lua.pushboolean(lua, Lua.toboolean(luaInstance.lua, -1)); pop++; }
+						if (pop == 2) Lua.rawset(lua, tableIdx);
 						Lua.pop(luaInstance.lua, 1);
 					}
-					Lua.pop(luaInstance.lua,1);
+					Lua.pop(luaInstance.lua, 1);
 					Lua.pushvalue(lua, tableIdx);
 					return;
 				}
