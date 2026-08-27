@@ -52,6 +52,9 @@ import psychlua.HScript;
 #if HSCRIPT_ALLOWED
 import psychlua.HScript.HScriptInfos;
 import crowplexus.iris.Iris;
+#if SSCRIPT_LEGACY_ALLOWED
+import psychlua.HScriptLegacy;
+#end
 import crowplexus.hscript.Expr.Error as IrisError;
 import crowplexus.hscript.Printer;
 #end
@@ -99,6 +102,7 @@ class PlayState extends MusicBeatState
 
 	#if HSCRIPT_ALLOWED
 	public var hscriptArray:Array<HScript> = [];
+	#if SSCRIPT_LEGACY_ALLOWED public var hscriptLegacyArray:Array<HScriptLegacy> = []; #end
 	#end
 
 	public var BF_X:Float = 770;
@@ -466,6 +470,9 @@ class PlayState extends MusicBeatState
 				#if HSCRIPT_ALLOWED
 				if(file.toLowerCase().endsWith('.hx'))
 					initHScript(folder + file);
+					#if SSCRIPT_LEGACY_ALLOWED
+					initHScriptLegacy(folder + file);
+					#end
 				#end
 			}
 		#end
@@ -627,6 +634,9 @@ class PlayState extends MusicBeatState
 				#if HSCRIPT_ALLOWED
 				if(file.toLowerCase().endsWith('.hx'))
 					initHScript(folder + file);
+					#if SSCRIPT_LEGACY_ALLOWED
+					initHScriptLegacy(folder + file);
+					#end
 				#end
 			}
 		#end
@@ -853,7 +863,12 @@ class PlayState extends MusicBeatState
 			if(Iris.instances.exists(scriptFile))
 				doPush = false;
 
-			if(doPush) initHScript(scriptFile);
+			if(doPush) {
+				initHScript(scriptFile);
+				#if SSCRIPT_LEGACY_ALLOWED
+				initHScriptLegacy(scriptFile);
+				#end
+			}
 		}
 		#end
 	}
@@ -3373,6 +3388,16 @@ class PlayState extends MusicBeatState
 			}
 
 		hscriptArray = null;
+		#if SSCRIPT_LEGACY_ALLOWED
+		if (hscriptLegacyArray != null)
+		{
+			for (leg in hscriptLegacyArray)
+			{
+				try { if (leg != null) leg.destroy(); } catch (e:Dynamic) {}
+			}
+			hscriptLegacyArray = null;
+		}
+		#end
 		#end
 		stagesFunc(function(stage:BaseStage) stage.destroy());
 
@@ -3529,7 +3554,13 @@ class PlayState extends MusicBeatState
 		{
 			if (Iris.instances.exists(scriptToLoad)) return false;
 
+			// Iris (1.0.4) — same idea as MainMenuState
 			initHScript(scriptToLoad);
+
+			// SScript (0.7.3) — same idea as LegacyMainMenuState (separate name, same job)
+			#if SSCRIPT_LEGACY_ALLOWED
+			initHScriptLegacy(scriptToLoad);
+			#end
 			return true;
 		}
 		return false;
@@ -3554,6 +3585,24 @@ class PlayState extends MusicBeatState
 				newScript.destroy();
 		}
 	}
+
+	#if SSCRIPT_LEGACY_ALLOWED
+	/** Psych 0.7.3 SScript — parallel to Iris (like LegacyMainMenuState vs MainMenuState) */
+	public function initHScriptLegacy(file:String):Void
+	{
+		try
+		{
+			var leg = new HScriptLegacy(null, file);
+			if (leg.exists('onCreate')) leg.executeCode('onCreate', []);
+			hscriptLegacyArray.push(leg);
+			trace('initialized SScript legacy interp: $file');
+		}
+		catch (e:Dynamic)
+		{
+			trace('SScript legacy failed for $file: $e');
+		}
+	}
+	#end
 	#end
 
 	public function callOnScripts(funcToCall:String, args:Array<Dynamic> = null, ignoreStops = false, exclusions:Array<String> = null, excludeValues:Array<Dynamic> = null):Dynamic {
@@ -3609,15 +3658,11 @@ class PlayState extends MusicBeatState
 	public function callOnHScript(funcToCall:String, args:Array<Dynamic> = null, ?ignoreStops:Bool = false, exclusions:Array<String> = null, excludeValues:Array<Dynamic> = null):Dynamic {
 		var returnVal:Dynamic = LuaUtils.Function_Continue;
 
-		#if HSCRIPT_ALLOWED
 		if(exclusions == null) exclusions = new Array();
 		if(excludeValues == null) excludeValues = new Array();
 		excludeValues.push(LuaUtils.Function_Continue);
 
-		var len:Int = hscriptArray.length;
-		if (len < 1)
-			return returnVal;
-
+		#if HSCRIPT_ALLOWED
 		for(script in hscriptArray)
 		{
 			@:privateAccess
@@ -3637,6 +3682,25 @@ class PlayState extends MusicBeatState
 
 				if(myValue != null && !excludeValues.contains(myValue))
 					returnVal = myValue;
+			}
+		}
+		#end
+
+		
+		#if SSCRIPT_LEGACY_ALLOWED
+		if (hscriptLegacyArray != null)
+		{
+			for (leg in hscriptLegacyArray)
+			{
+				if (leg == null) continue;
+				try {
+					if (leg.exists(funcToCall))
+					{
+						var lret = leg.executeCode(funcToCall, args);
+						if (lret != null && !excludeValues.contains(lret) && lret != LuaUtils.Function_Continue)
+							returnVal = lret;
+					}
+				} catch (e:Dynamic) {}
 			}
 		}
 		#end
