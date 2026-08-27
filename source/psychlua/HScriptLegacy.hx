@@ -435,7 +435,9 @@ class HScriptLegacy extends SScript
 	override public function destroy()
 	{
 		origin = null;
-		#if LUA_ALLOWED parentLua = null; #end
+		#if LUA_ALLOWED
+		parentLua = null;
+		#end
 
 		super.destroy();
 	}
@@ -491,5 +493,4 @@ class CustomFlxColor {
 		return cast FlxColor.fromString(str);
 	}
 }
-#end
 #end
