@@ -62,12 +62,7 @@ class LegacyCompat
 			#if android
 			try {
 				lime.ui.Haptic.vibrate(milliseconds, milliseconds);
-			} catch (e:Dynamic) {
-				try {
-					// older android helper if present
-					untyped Hardware.vibrate(milliseconds);
-				} catch (e2:Dynamic) {}
-			}
+			} catch (e:Dynamic) {}
 			#end
 		});
 
