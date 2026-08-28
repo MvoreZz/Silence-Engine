@@ -17,43 +17,19 @@ class ReflectionFunctions
 	{
 		var lua:State = funk.lua;
 		Lua_helper.add_callback(lua, "getProperty", function(variable:String, ?allowMaps:Bool = false) {
-			if (variable == null || variable.length < 1) return null;
 			var split:Array<String> = variable.split('.');
-			try {
-				if(split.length > 1) {
-					var obj:Dynamic = LuaUtils.getPropertyLoop(split, true, allowMaps);
-					if (obj == null) return null;
-					return LuaUtils.getVarInArray(obj, split[split.length-1], allowMaps);
-				}
-				var direct:Dynamic = LuaUtils.getObjectDirectly(variable, true, allowMaps);
-				if (direct != null) return direct;
-				return LuaUtils.getVarInArray(LuaUtils.getTargetInstance(), variable, allowMaps);
-			} catch (e:Dynamic) {
-				FunkinLua.luaTrace('getProperty: Failed on ' + variable + ' (' + e + ')', false, false, FlxColor.RED);
-				return null;
-			}
+			if(split.length > 1)
+				return LuaUtils.getVarInArray(LuaUtils.getPropertyLoop(split, true, allowMaps), split[split.length-1], allowMaps);
+			return LuaUtils.getVarInArray(LuaUtils.getTargetInstance(), variable, allowMaps);
 		});
 		Lua_helper.add_callback(lua, "setProperty", function(variable:String, value:Dynamic, ?allowMaps:Bool = false, ?allowInstances:Bool = false) {
-			// 1.0.4 API + 0.7.3 object resolution (null-safe)
-			if (variable == null || variable.length < 1) return false;
 			var split:Array<String> = variable.split('.');
-			var val:Dynamic = allowInstances ? parseInstances(value) : value;
-			try {
-				if(split.length > 1) {
-					var obj:Dynamic = LuaUtils.getPropertyLoop(split, true, allowMaps);
-					if (obj == null) {
-						FunkinLua.luaTrace('setProperty: Unknown variable/object: ' + split[0], false, false, FlxColor.RED);
-						return false;
-					}
-					LuaUtils.setVarInArray(obj, split[split.length-1], val, allowMaps);
-					return true;
-				}
-				LuaUtils.setVarInArray(LuaUtils.getTargetInstance(), variable, val, allowMaps);
-				return true;
-			} catch (e:Dynamic) {
-				FunkinLua.luaTrace('setProperty: Failed on ' + variable + ' (' + e + ')', false, false, FlxColor.RED);
-				return false;
+			if(split.length > 1) {
+				LuaUtils.setVarInArray(LuaUtils.getPropertyLoop(split, true, allowMaps), split[split.length-1], allowInstances ? parseInstances(value) : value, allowMaps);
+				return value;
 			}
+			LuaUtils.setVarInArray(LuaUtils.getTargetInstance(), variable, allowInstances ? parseInstances(value) : value, allowMaps);
+			return value;
 		});
 		Lua_helper.add_callback(lua, "getPropertyFromClass", function(classVar:String, variable:String, ?allowMaps:Bool = false) {
 			var myClass:Dynamic = Type.resolveClass(classVar);
