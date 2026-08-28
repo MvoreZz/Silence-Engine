@@ -10,11 +10,12 @@ class ShaderFunctions
 	{
 		var lua = funk.lua;
 		// shader shit
-		funk.addLocalCallback("initLuaShader", function(name:String) {
+		// 0.7.3-compatible: optional glslVersion (ignored on 1.0.4 runtime but accepted)
+		funk.addLocalCallback("initLuaShader", function(name:String, ?glslVersion:Int = 120) {
 			if(!ClientPrefs.data.shaders) return false;
 
 			#if (!flash && MODS_ALLOWED && sys)
-			return funk.initLuaShader(name);
+			return funk.initLuaShader(name, glslVersion);
 			#else
 			FunkinLua.luaTrace("initLuaShader: Platform unsupported for Runtime Shaders!", false, false, FlxColor.RED);
 			#end
