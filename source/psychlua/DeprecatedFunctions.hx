@@ -124,21 +124,25 @@ class DeprecatedFunctions
 		});
 		Lua_helper.add_callback(lua, "setPropertyLuaSprite", function(tag:String, variable:String, value:Dynamic) {
 			FunkinLua.luaTrace("setPropertyLuaSprite is deprecated! Use setProperty instead", false, true);
-			if(MusicBeatState.getVariables().exists(tag)) {
-				var killMe:Array<String> = variable.split('.');
-				if(killMe.length > 1) {
-					var coverMeInPiss:Dynamic = Reflect.getProperty(MusicBeatState.getVariables().get(tag), killMe[0]);
-					for (i in 1...killMe.length-1) {
-						coverMeInPiss = Reflect.getProperty(coverMeInPiss, killMe[i]);
-					}
-					Reflect.setProperty(coverMeInPiss, killMe[killMe.length-1], value);
-					return true;
-				}
-				Reflect.setProperty(MusicBeatState.getVariables().get(tag), variable, value);
+			var spr:Dynamic = null;
+			if (MusicBeatState.getVariables() != null && MusicBeatState.getVariables().exists(tag))
+				spr = MusicBeatState.getVariables().get(tag);
+			if (spr == null && PlayState.instance != null)
+				spr = PlayState.instance.getLuaObject(tag);
+			if (spr == null) {
+				FunkinLua.luaTrace("setPropertyLuaSprite: Lua sprite with tag: " + tag + " doesn't exist!");
+				return false;
+			}
+			var killMe:Array<String> = variable.split('.');
+			if (killMe.length > 1) {
+				var coverMeInPiss:Dynamic = Reflect.getProperty(spr, killMe[0]);
+				for (i in 1...killMe.length-1)
+					coverMeInPiss = Reflect.getProperty(coverMeInPiss, killMe[i]);
+				Reflect.setProperty(coverMeInPiss, killMe[killMe.length-1], value);
 				return true;
 			}
-			FunkinLua.luaTrace("setPropertyLuaSprite: Lua sprite with tag: " + tag + " doesn't exist!");
-			return false;
+			Reflect.setProperty(spr, variable, value);
+			return true;
 		});
 		Lua_helper.add_callback(lua, "musicFadeIn", function(duration:Float, fromValue:Float = 0, toValue:Float = 1) {
 			FlxG.sound.music.fadeIn(duration, fromValue, toValue);
