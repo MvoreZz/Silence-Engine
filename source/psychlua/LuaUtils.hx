@@ -229,10 +229,9 @@ class LuaUtils
 		return Reflect.getProperty(leArray, variable);
 	}
 
-	// 1.0.4 signature kept; also accepts 0.7.3-style extra arg via overloads in callers
 	public static function getPropertyLoop(split:Array<String>, ?getProperty:Bool=true, ?allowMaps:Bool = false):Dynamic
 	{
-		var obj:Dynamic = getObjectDirectly(split[0], true, allowMaps);
+		var obj:Dynamic = getObjectDirectly(split[0]);
 		var end = split.length;
 		if(getProperty) end = split.length-1;
 
@@ -240,8 +239,7 @@ class LuaUtils
 		return obj;
 	}
 
-	/** 0.7.3-compatible object resolve: variables + getLuaObject + state fields */
-	public static function getObjectDirectly(objectName:String, ?checkForTextsToo:Bool = true, ?allowMaps:Bool = false):Dynamic
+	public static function getObjectDirectly(objectName:String, ?allowMaps:Bool = false):Dynamic
 	{
 		switch(objectName)
 		{
@@ -249,17 +247,8 @@ class LuaUtils
 				return PlayState.instance;
 			
 			default:
-				var obj:Dynamic = null;
-				// 1.0.4 storage
-				if (MusicBeatState.getVariables() != null)
-					obj = MusicBeatState.getVariables().get(objectName);
-				// 0.7.3-style lua object lookup
-				if (obj == null && PlayState.instance != null)
-					obj = PlayState.instance.getLuaObject(objectName);
-				if (obj == null)
-					obj = getVarInArray(getTargetInstance(), objectName, allowMaps);
-				if (obj == null)
-					obj = getVarInArray(MusicBeatState.getState(), objectName, allowMaps);
+				var obj:Dynamic = MusicBeatState.getVariables().get(objectName);
+				if(obj == null) obj = getVarInArray(MusicBeatState.getState(), objectName, allowMaps);
 				return obj;
 		}
 	}
