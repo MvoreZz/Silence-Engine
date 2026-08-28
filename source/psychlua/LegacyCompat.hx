@@ -134,6 +134,13 @@ class LegacyCompat
 		// 0.6.3 / 0.7.3 video: startVideo("file") — already on 1.0.4 with optional args; no override
 
 		// 0.6.3 shader note: initLuaShader / setSpriteShader exist on 1.0.4 ShaderFunctions
+
+		// 0.6.3 / 0.7.3: changeCharacter("dad", "pico")
+		Lua_helper.add_callback(lua, "changeCharacter", function(charType:String, charName:String) {
+			if (PlayState.instance == null) return false;
+			PlayState.instance.changeCharacter(charType, charName);
+			return true;
+		});
 	}
 }
 #end
