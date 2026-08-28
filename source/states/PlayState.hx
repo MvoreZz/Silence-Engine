@@ -37,6 +37,9 @@ import openfl.filters.ShaderFilter;
 import shaders.ErrorHandledShader;
 
 import objects.VideoSprite;
+#if (VIDEOS_ALLOWED && hxcodec)
+import hxcodec.VideoHandler as MP4Handler; // Psych 0.6.3-style video
+#end
 import objects.Note.EventNote;
 import objects.*;
 import states.stages.*;
@@ -953,6 +956,44 @@ class PlayState extends MusicBeatState
 		startAndEnd();
 		#end
 		return null;
+	}
+
+
+	/**
+	 * Psych 0.6.3 video path (hxCodec MP4Handler) — does not replace 1.0.4 VideoSprite startVideo.
+	 * Requires: haxelib hxcodec + Project.xml define hxcodec
+	 */
+	public function startVideo063(name:String):Void
+	{
+		#if (VIDEOS_ALLOWED && hxcodec)
+		inCutscene = true;
+
+		var filepath:String = Paths.video(name);
+		#if sys
+		if (!FileSystem.exists(filepath))
+		#else
+		if (!OpenFlAssets.exists(filepath))
+		#end
+		{
+			FlxG.log.warn('Couldnt find video file: ' + name);
+			startAndEnd();
+			return;
+		}
+
+		var video:MP4Handler = new MP4Handler();
+		video.playVideo(filepath);
+		video.finishCallback = function()
+		{
+			startAndEnd();
+			return;
+		}
+		#elseif VIDEOS_ALLOWED
+		// Fallback: 1.0.4 VideoSprite path if hxcodec not compiled in
+		startVideo(name);
+		#else
+		FlxG.log.warn('Platform not supported!');
+		startAndEnd();
+		#end
 	}
 
 	function startAndEnd()
@@ -3367,9 +3408,6 @@ class PlayState extends MusicBeatState
 
 	public function spawnNoteSplash(x:Float = 0, y:Float = 0, ?data:Int = 0, ?note:Note, ?strum:StrumNote) {
 		var splash:NoteSplash = grpNoteSplashes.recycle(NoteSplash);
-		// Reset recycled splash so it doesn't stick as leftover particles
-		splash.alpha = 1;
-		splash.visible = true;
 		splash.babyArrow = strum;
 		splash.spawnSplashNote(x, y, data, note);
 		grpNoteSplashes.add(splash);
