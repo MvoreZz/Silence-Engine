@@ -156,11 +156,21 @@ jobs:
           HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
         run: |
           brew install ldid
-          cd export/release/ios/build/Release-iphoneos/${{ env.PROJECT_NAME }}.app
-          ldid -S../../../${{ env.PROJECT_NAME }}/${{ env.PROJECT_NAME }}.entitlements ${{ env.PROJECT_NAME }}
-          cd ..
-          mkdir Payload
-          mv ${{ env.PROJECT_NAME }}.app Payload
+          cd export/release/ios/build/Release-iphoneos
+          APP_NAME=$(ls -d *.app | head -n 1)
+          if [ -z "$APP_NAME" ]; then
+            echo "Derlenen .app dosyasi bulunamadi!"
+            exit 1
+          fi
+          echo "Bulunan Uygulama: $APP_NAME"
+          
+          ENTITLEMENTS_PATH=$(find ../../../ -name "*.entitlements" | head -n 1)
+          if [ -n "$ENTITLEMENTS_PATH" ]; then
+            ldid -S"$ENTITLEMENTS_PATH" "$APP_NAME/$(basename "$APP_NAME" .app)" || true
+          fi
+
+          mkdir -p Payload
+          cp -r "$APP_NAME" Payload/
           zip -r ${{ env.PROJECT_NAME }}-release.ipa Payload
 
       - name: Upload Artifact
