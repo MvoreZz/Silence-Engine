@@ -231,15 +231,19 @@ class LuaUtils
 
 	public static function getPropertyLoop(split:Array<String>, ?getProperty:Bool=true, ?allowMaps:Bool = false):Dynamic
 	{
-		var obj:Dynamic = getObjectDirectly(split[0]);
+		var obj:Dynamic = getObjectDirectly(split[0], true, allowMaps);
 		var end = split.length;
 		if(getProperty) end = split.length-1;
 
-		for (i in 1...end) obj = getVarInArray(obj, split[i], allowMaps);
+		for (i in 1...end) {
+			if (obj == null) return null;
+			obj = getVarInArray(obj, split[i], allowMaps);
+		}
 		return obj;
 	}
 
-	public static function getObjectDirectly(objectName:String, ?allowMaps:Bool = false):Dynamic
+	/** 0.7.3 + 1.0.4 object resolve (lua sprites, variables, state fields) */
+	public static function getObjectDirectly(objectName:String, ?checkForTextsToo:Bool = true, ?allowMaps:Bool = false):Dynamic
 	{
 		switch(objectName)
 		{
@@ -247,8 +251,17 @@ class LuaUtils
 				return PlayState.instance;
 			
 			default:
-				var obj:Dynamic = MusicBeatState.getVariables().get(objectName);
-				if(obj == null) obj = getVarInArray(MusicBeatState.getState(), objectName, allowMaps);
+				var obj:Dynamic = null;
+				#if LUA_ALLOWED
+				if (MusicBeatState.getVariables() != null && MusicBeatState.getVariables().exists(objectName))
+					obj = MusicBeatState.getVariables().get(objectName);
+				if (obj == null && PlayState.instance != null)
+					obj = PlayState.instance.getLuaObject(objectName, checkForTextsToo);
+				#end
+				if (obj == null)
+					obj = getVarInArray(getTargetInstance(), objectName, allowMaps);
+				if (obj == null)
+					obj = getVarInArray(MusicBeatState.getState(), objectName, allowMaps);
 				return obj;
 		}
 	}
