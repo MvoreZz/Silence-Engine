@@ -1311,6 +1311,20 @@ class FunkinLua {
 				else
 					game.startCountdown();
 			});
+
+		// Psych 0.6.3 video (hxCodec MP4Handler) — 1.0.4 startVideo unchanged
+		Lua_helper.add_callback(lua, "startVideo063", function(videoFile:String) {
+			#if VIDEOS_ALLOWED
+			if (FileSystem.exists(Paths.video(videoFile))) {
+				game.startVideo063(videoFile);
+				return true;
+			}
+			luaTrace('startVideo063: Video file not found: ' + videoFile, false, false, FlxColor.RED);
+			return false;
+			#else
+			return false;
+			#end
+		});
 			return true;
 			#end
 		});
@@ -1570,6 +1584,9 @@ class FunkinLua {
 		CustomSubstate.implement(this);
 		ShaderFunctions.implement(this);
 		DeprecatedFunctions.implement(this);
+		#if LUA_ALLOWED
+		LegacyCompat.implement(this); // 0.6.3 / 0.7.3 additive Lua
+		#end
 		MobileFunctions.implement(this);
 		#if android AndroidFunctions.implement(this); #end
 
