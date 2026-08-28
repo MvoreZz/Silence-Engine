@@ -121,7 +121,12 @@
 	<haxelib name="hscript-iris" if="HSCRIPT_ALLOWED"/>
 	<haxelib name="SScript" if="SSCRIPT_LEGACY_ALLOWED"/>
 	<haxelib name="hxvlc" if="VIDEOS_ALLOWED"/>
-	<!-- Optional Psych 0.6.3 video (MP4Handler). Does not replace hxvlc/1.0.4. -->
+
+	<!-- ========== 0.6.3 / 0.7.3 video (hxCodec) — does NOT replace hxvlc ==========
+	     1) haxelib install hxcodec
+	     2) Uncomment the next line to enable MP4Handler / startVideo063 / FlxVideo mods
+	============================================================================ -->
+	<!-- <set name="hxcodec" /> -->
 	<haxelib name="hxcodec" if="hxcodec"/>
 	<define name="hxcodec" if="hxcodec"/>
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED"/>
