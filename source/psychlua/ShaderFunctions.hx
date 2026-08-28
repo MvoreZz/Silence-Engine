@@ -10,7 +10,6 @@ class ShaderFunctions
 	{
 		var lua = funk.lua;
 		// shader shit
-		// 0.7.3-compatible: optional glslVersion (ignored on 1.0.4 runtime but accepted)
 		funk.addLocalCallback("initLuaShader", function(name:String, ?glslVersion:Int = 120) {
 			if(!ClientPrefs.data.shaders) return false;
 
