@@ -46,6 +46,7 @@ jobs:
         run: |
           sh ./setup/unix.sh
           haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
+          haxelib git hxCodec https://github.com/SPLCoding/hxCodec-but-it-works-xd.git --quiet || true
           echo "=== Haxe Version ==="
           haxe -version
           echo "=== Haxelib List (before force set) ==="
@@ -59,6 +60,7 @@ jobs:
           haxelib set openfl 9.4.1
           haxelib set HtmlParser 3.4.0
           haxelib set SScript git
+          haxelib set hxCodec git
           echo "=== Haxelib List (after force set) ==="
           haxelib list
 
@@ -114,6 +116,7 @@ jobs:
         run: |
           sh ./setup/unix.sh
           haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
+          haxelib git hxCodec https://github.com/SPLCoding/hxCodec-but-it-works-xd.git --quiet || true
           echo "=== Haxe Version ==="
           haxe -version
           echo "=== Haxelib List (before force set) ==="
@@ -127,6 +130,7 @@ jobs:
           haxelib set openfl 9.4.1
           haxelib set HtmlParser 3.4.0
           haxelib set SScript git
+          haxelib set hxCodec git
           echo "=== Haxelib List (after force set) ==="
           haxelib list
 
@@ -159,10 +163,10 @@ jobs:
           cd export/release/ios/build/Release-iphoneos
           APP_NAME=$(ls -d *.app | head -n 1)
           if [ -z "$APP_NAME" ]; then
-            echo "Derlenen .app dosyasi bulunamadi!"
+            echo "Compiled .app file not found!"
             exit 1
           fi
-          echo "Bulunan Uygulama: $APP_NAME"
+          echo "Found Application: $APP_NAME"
           
           ENTITLEMENTS_PATH=$(find ../../../ -name "*.entitlements" | head -n 1)
           if [ -n "$ENTITLEMENTS_PATH" ]; then
