@@ -473,9 +473,7 @@ class PlayState extends MusicBeatState
 				#if HSCRIPT_ALLOWED
 				if(file.toLowerCase().endsWith('.hx'))
 					initHScript(folder + file);
-					#if SSCRIPT_LEGACY_ALLOWED
-					initHScriptLegacy(folder + file);
-					#end
+					// HScriptLegacy (0.7.3 SScript) not auto-loaded on same file — breaks 1.0.4 Iris typing
 				#end
 			}
 		#end
@@ -637,9 +635,7 @@ class PlayState extends MusicBeatState
 				#if HSCRIPT_ALLOWED
 				if(file.toLowerCase().endsWith('.hx'))
 					initHScript(folder + file);
-					#if SSCRIPT_LEGACY_ALLOWED
-					initHScriptLegacy(folder + file);
-					#end
+					// HScriptLegacy (0.7.3 SScript) not auto-loaded on same file — breaks 1.0.4 Iris typing
 				#end
 			}
 		#end
@@ -866,12 +862,7 @@ class PlayState extends MusicBeatState
 			if(Iris.instances.exists(scriptFile))
 				doPush = false;
 
-			if(doPush) {
-				initHScript(scriptFile);
-				#if SSCRIPT_LEGACY_ALLOWED
-				initHScriptLegacy(scriptFile);
-				#end
-			}
+			if(doPush) initHScript(scriptFile);
 		}
 		#end
 	}
@@ -2277,7 +2268,13 @@ class PlayState extends MusicBeatState
 		}
 	}
 
-	public function triggerEvent(eventName:String, value1:String, value2:String, strumTime:Float) {
+		/** 0.6.3 / 0.7.3 compat — used by mod scripts: game.changeCharacter('dad', 'name') */
+	public function changeCharacter(charType:String, charName:String):Void
+	{
+		triggerEvent('Change Character', charType, charName, Conductor.songPosition);
+	}
+
+public function triggerEvent(eventName:String, value1:String, value2:String, strumTime:Float) {
 		var flValue1:Null<Float> = Std.parseFloat(value1);
 		var flValue2:Null<Float> = Std.parseFloat(value2);
 		if(Math.isNaN(flValue1)) flValue1 = null;
@@ -3605,13 +3602,8 @@ class PlayState extends MusicBeatState
 		{
 			if (Iris.instances.exists(scriptToLoad)) return false;
 
-			// Iris (1.0.4) — same idea as MainMenuState
+			// Iris only (1.0.4) — do not dual-load SScript on the same .hx (breaks 1.0.4 mods)
 			initHScript(scriptToLoad);
-
-			// SScript (0.7.3) — same idea as LegacyMainMenuState (separate name, same job)
-			#if SSCRIPT_LEGACY_ALLOWED
-			initHScriptLegacy(scriptToLoad);
-			#end
 			return true;
 		}
 		return false;
@@ -3629,16 +3621,22 @@ class PlayState extends MusicBeatState
 		}
 		catch(e:IrisError)
 		{
+			// Clean failed Iris instance
 			var pos:HScriptInfos = cast {fileName: file, showLine: false};
 			Iris.error(Printer.errorToString(e, false), pos);
-			var newScript:HScript = cast (Iris.instances.get(file), HScript);
-			if(newScript != null)
-				newScript.destroy();
+			var failed:HScript = cast (Iris.instances.get(file), HScript);
+			if(failed != null)
+				failed.destroy();
+
+			// No legacy folder: only if Iris fails, try 0.7.3 SScript once (never dual-load)
+			#if SSCRIPT_LEGACY_ALLOWED
+			initHScriptLegacy(file);
+			#end
 		}
 	}
 
 	#if SSCRIPT_LEGACY_ALLOWED
-	/** Psych 0.7.3 SScript — parallel to Iris (like LegacyMainMenuState vs MainMenuState) */
+	/** Psych 0.7.3 SScript fallback — used only when Iris fails on this file */
 	public function initHScriptLegacy(file:String):Void
 	{
 		try
@@ -3646,7 +3644,7 @@ class PlayState extends MusicBeatState
 			var leg = new HScriptLegacy(null, file);
 			if (leg.exists('onCreate')) leg.executeCode('onCreate', []);
 			hscriptLegacyArray.push(leg);
-			trace('initialized SScript legacy interp: $file');
+			trace('initialized SScript legacy interp (Iris fallback): $file');
 		}
 		catch (e:Dynamic)
 		{
