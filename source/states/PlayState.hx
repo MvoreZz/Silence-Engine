@@ -2269,9 +2269,72 @@ class PlayState extends MusicBeatState
 	}
 
 		/** 0.6.3 / 0.7.3 compat — used by mod scripts: game.changeCharacter('dad', 'name') */
+	/**
+	 * 0.6.3/0.7.3 compat: game.changeCharacter('dad', 'name')
+	 * Applies swap DIRECTLY — does NOT re-fire onEvent (avoids infinite loop / kick from game).
+	 */
 	public function changeCharacter(charType:String, charName:String):Void
 	{
-		triggerEvent('Change Character', charType, charName, Conductor.songPosition);
+		if (charName == null || charName.length < 1) return;
+
+		var type:Int = 0;
+		switch (charType.toLowerCase().trim()) {
+			case 'gf' | 'girlfriend': type = 2;
+			case 'dad' | 'opponent' | '1': type = 1;
+			case 'bf' | 'boyfriend' | '0': type = 0;
+			default:
+				type = Std.parseInt(charType);
+				if (Math.isNaN(type)) type = 0;
+		}
+
+		try {
+			switch (type) {
+				case 0:
+					if (boyfriend != null && boyfriend.curCharacter != charName) {
+						if (!boyfriendMap.exists(charName)) addCharacterToList(charName, 0);
+						var next = boyfriendMap.get(charName);
+						if (next == null) return;
+						var lastAlpha:Float = boyfriend.alpha;
+						boyfriend.alpha = 0.00001;
+						boyfriend = next;
+						boyfriend.alpha = lastAlpha;
+						if (iconP1 != null) iconP1.changeIcon(boyfriend.healthIcon);
+						setOnScripts('boyfriendName', boyfriend.curCharacter);
+					}
+				case 1:
+					if (dad != null && dad.curCharacter != charName) {
+						if (!dadMap.exists(charName)) addCharacterToList(charName, 1);
+						var nextDad = dadMap.get(charName);
+						if (nextDad == null) return;
+						var wasGf:Bool = dad.curCharacter.startsWith('gf-') || dad.curCharacter == 'gf';
+						var lastAlpha:Float = dad.alpha;
+						dad.alpha = 0.00001;
+						dad = nextDad;
+						if (!dad.curCharacter.startsWith('gf-') && dad.curCharacter != 'gf') {
+							if (wasGf && gf != null) gf.visible = true;
+						} else if (gf != null) {
+							gf.visible = false;
+						}
+						dad.alpha = lastAlpha;
+						if (iconP2 != null) iconP2.changeIcon(dad.healthIcon);
+						setOnScripts('dadName', dad.curCharacter);
+					}
+				case 2:
+					if (gf != null && gf.curCharacter != charName) {
+						if (!gfMap.exists(charName)) addCharacterToList(charName, 2);
+						var nextGf = gfMap.get(charName);
+						if (nextGf == null) return;
+						var lastAlpha:Float = gf.alpha;
+						gf.alpha = 0.00001;
+						gf = nextGf;
+						gf.alpha = lastAlpha;
+						setOnScripts('gfName', gf.curCharacter);
+					}
+			}
+			reloadHealthBarColors();
+		} catch (e:Dynamic) {
+			trace('changeCharacter failed: ' + e);
+		}
 	}
 
 public function triggerEvent(eventName:String, value1:String, value2:String, strumTime:Float) {
