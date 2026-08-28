@@ -1341,6 +1341,10 @@ class FunkinLua {
 				var oldSnd = variables.get(tag);
 				if(oldSnd != null)
 				{
+					// Prevent FlxSound volumeTween null crash (0.6.3/0.7.3 mods reusing tags)
+					try {
+						if (oldSnd.fadeTween != null) oldSnd.fadeTween.cancel();
+					} catch (e:Dynamic) {}
 					oldSnd.stop();
 					oldSnd.destroy();
 				}
