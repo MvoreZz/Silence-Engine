@@ -1832,7 +1832,9 @@ class FunkinLua {
 
 	public function initLuaShader(name:String, ?glslVersion:Int = 120)
 	{
-		if(!ClientPrefs.data.shaders) return false;
+		var shadersOn:Bool = true;
+		try { shadersOn = ClientPrefs.data.shaders; } catch (e:Dynamic) {}
+		if(!shadersOn) return false;
 
 		#if (!flash && sys)
 		if(runtimeShaders.exists(name))
@@ -1845,18 +1847,20 @@ class FunkinLua {
 			}
 		}
 
-		var foldersToCheck:Array<String> = [Paths.getSharedPath('shaders/')];
+		var foldersToCheck:Array<String> = [];
+		try { foldersToCheck.push(Paths.getSharedPath('shaders/')); } catch (e:Dynamic) {}
+		try { foldersToCheck.push(Paths.getPreloadPath('shaders/')); } catch (e:Dynamic) {}
 		#if MODS_ALLOWED
-		foldersToCheck.push(Paths.mods('shaders/'));
+		try { foldersToCheck.push(Paths.mods('shaders/')); } catch (e:Dynamic) {}
 		if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
 			foldersToCheck.insert(0, Paths.mods(Mods.currentModDirectory + '/shaders/'));
-
 		for(mod in Mods.getGlobalMods())
 			foldersToCheck.insert(0, Paths.mods(mod + '/shaders/'));
 		#end
 
 		for (folder in foldersToCheck)
 		{
+			if(folder == null) continue;
 			if(FileSystem.exists(folder))
 			{
 				var frag:String = folder + name + '.frag';
@@ -1879,7 +1883,6 @@ class FunkinLua {
 				if(found)
 				{
 					runtimeShaders.set(name, [frag, vert]);
-					//trace('Found shader $name!');
 					return true;
 				}
 			}
