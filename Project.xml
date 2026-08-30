@@ -2,7 +2,7 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="SilenceEngine" file="Silence Engine" packageName="com.mvorezz.silenceengine" package="com.mvorezz.silenceengine" main="Main" version="0.2.8" company="MvoreZz" />
+	<app title="Silence Engine" file="SilenceEngine" packageName="com.mvorezz.silenceengine" package="com.mvorezz.silenceengine" main="Main" version="0.2.8" company="MvoreZz" />
 
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
@@ -126,7 +126,7 @@
 	     1) haxelib install hxcodec
 	     2) Uncomment the next line to enable MP4Handler / startVideo063 / FlxVideo mods
 	============================================================================ -->
-	<set name="hxcodec"/>
+	<!-- <set name="hxcodec" /> -->
 	<haxelib name="hxcodec" if="hxcodec"/>
 	<define name="hxcodec" if="hxcodec"/>
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED"/>
