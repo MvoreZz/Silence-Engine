@@ -374,10 +374,12 @@ class HScript extends Iris
 		set('parentLua', null);
 		#end
 		set('this', this);
-				set('game', FlxG.state);
+		set('game', FlxG.state);
 		set('VideoHandler', psychlua.VideoHandlerShim);
 		set('MP4Handler', psychlua.VideoHandlerShim);
 		set('FlxVideo', psychlua.VideoHandlerShim);
+
+		// 0.6.3/0.7.3 mods sometimes call these from HScript/runHaxeCode
 		set('setProperty', function(variable:String, value:Dynamic) {
 			try {
 				var split = variable.split('.');
@@ -441,19 +443,23 @@ class HScript extends Iris
 
 	#if LUA_ALLOWED
 
-	/** 0.6.3/0.7.3 video names → VideoHandlerShim (hxvlc). Does not use hxCodec. */
+	/** Resolve class with 0.6.3/0.7.3 video aliases → VideoHandlerShim (hxvlc), not hxCodec */
 	public static function resolveLibraryClass(libName:String, libPackage:String = ''):Dynamic
 	{
 		if (libName == null) libName = '';
+
+		// 0.6.3 / 0.7.3 video class names → our shim (hxvlc-backed, no hxCodec)
 		if (libName == 'VideoHandler' || libName == 'MP4Handler' || libName == 'FlxVideo')
 		{
 			var shim:Dynamic = Type.resolveClass('psychlua.VideoHandlerShim');
 			if (shim != null) return shim;
 		}
+
 		var candidates:Array<String> = [];
 		if (libPackage != null && libPackage.length > 0)
 			candidates.push(libPackage + '.' + libName);
 		candidates.push(libName);
+
 		for (path in candidates)
 		{
 			var c:Dynamic = Type.resolveClass(path);
