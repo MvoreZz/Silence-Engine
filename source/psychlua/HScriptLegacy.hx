@@ -99,8 +99,6 @@ class HScriptLegacy extends SScript
 		set('Paths', Paths);
 		set('Conductor', Conductor);
 		set('ClientPrefs', ClientPrefs);
-		// VideoSpriteManager skipped — type name differs on 1.0.4 mobile ports
-
 		#if ACHIEVEMENTS_ALLOWED
 		set('Achievements', Achievements);
 		#end
@@ -354,82 +352,6 @@ class HScriptLegacy extends SScript
 		return call(funcToRun, funcArgs);
 	}
 
-	#if LUA_ALLOWED
-	public static function implement(funk:FunkinLua) {
-		funk.addLocalCallback("runHaxeCode", function(codeToRun:String, ?varsToBring:Any = null, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null):Dynamic {
-			#if SScript
-			initHaxeModuleCode(funk, codeToRun, varsToBring);
-			final retVal:TeaCall = funk.hscriptLegacy.executeCode(funcToRun, funcArgs);
-			if (retVal != null) {
-				if(retVal.succeeded)
-					return (retVal.returnValue == null || LuaUtils.isOfTypes(retVal.returnValue, [Bool, Int, Float, String, Array])) ? retVal.returnValue : null;
-
-				final e = retVal.exceptions[0];
-				final calledFunc:String = if(funk.hscriptLegacy.origin == funk.lastCalledFunction) funcToRun else funk.lastCalledFunction;
-				if (e != null)
-					FunkinLua.luaTrace(funk.hscriptLegacy.origin + ":" + calledFunc + " - " + e, false, false, FlxColor.RED);
-				return null;
-			}
-			else if (funk.hscriptLegacy.returnValue != null)
-			{
-				return funk.hscriptLegacy.returnValue;
-			}
-			#else
-			FunkinLua.luaTrace("runHaxeCode: HScriptLegacy isn't supported on this platform!", false, false, FlxColor.RED);
-			#end
-			return null;
-		});
-		
-		funk.addLocalCallback("runHaxeFunction", function(funcToRun:String, ?funcArgs:Array<Dynamic> = null) {
-			#if SScript
-			var callValue = funk.hscriptLegacy.executeFunction(funcToRun, funcArgs);
-			if (!callValue.succeeded)
-			{
-				var e = callValue.exceptions[0];
-				if (e != null)
-					FunkinLua.luaTrace('ERROR (${funk.hscriptLegacy.origin}: ${callValue.calledFunction}) - ' + e.message.substr(0, e.message.indexOf('\n')), false, false, FlxColor.RED);
-				return null;
-			}
-			else
-				return callValue.returnValue;
-			#else
-			FunkinLua.luaTrace("runHaxeFunction: HScriptLegacy isn't supported on this platform!", false, false, FlxColor.RED);
-			#end
-		});
-		// This function is unnecessary because import already exists in SScript as a native feature
-		funk.addLocalCallback("addHaxeLibrary", function(libName:String, ?libPackage:String = '') {
-			var str:String = '';
-			if(libPackage.length > 0)
-				str = libPackage + '.';
-			else if(libName == null)
-				libName = '';
-
-			var c:Dynamic = Type.resolveClass(str + libName);
-			if (c == null)
-				c = Type.resolveEnum(str + libName);
-
-			#if SScript
-			if (c != null)
-				SScript.globalVariables[libName] = c;
-			#end
-
-			#if SScript
-			if (funk.hscriptLegacy != null)
-			{
-				try {
-					if (c != null)
-						funk.hscriptLegacy.set(libName, c);
-				}
-				catch (e:Dynamic) {
-					FunkinLua.luaTrace(funk.hscriptLegacy.origin + ":" + funk.lastCalledFunction + " - " + e, false, false, FlxColor.RED);
-				}
-			}
-			#else
-			FunkinLua.luaTrace("addHaxeLibrary: HScriptLegacy isn't supported on this platform!", false, false, FlxColor.RED);
-			#end
-		});
-	}
-	#end
 
 	override public function destroy()
 	{
