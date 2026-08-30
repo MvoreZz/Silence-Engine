@@ -183,6 +183,10 @@ class Paths
 	inline public static function getSharedPath(file:String = '')
 		return 'assets/shared/$file';
 
+	/** Psych 0.6.3 / 0.7.3 alias — same as getSharedPath on 1.0.4 */
+	inline public static function getPreloadPath(file:String = '')
+		return getSharedPath(file);
+
 	inline static public function txt(key:String, ?folder:String)
 		return getPath('data/$key.txt', TEXT, folder, true);
 
@@ -468,6 +472,13 @@ class Paths
 
 	inline static public function modsVideo(key:String)
 		return modFolders('videos/' + key + '.' + VIDEO_EXT);
+
+	/** 0.6.3-style shader folder under current mod */
+	inline static public function modsShaderFragment(key:String)
+		return modFolders('shaders/' + key + '.frag');
+
+	inline static public function modsShaderVertex(key:String)
+		return modFolders('shaders/' + key + '.vert');
 
 	inline static public function modsSounds(path:String, key:String)
 		return modFolders(path + '/' + key + '.' + SOUND_EXT);
