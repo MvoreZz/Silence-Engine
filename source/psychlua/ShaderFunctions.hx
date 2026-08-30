@@ -11,9 +11,12 @@ class ShaderFunctions
 		var lua = funk.lua;
 		// shader shit
 		funk.addLocalCallback("initLuaShader", function(name:String, ?glslVersion:Int = 120) {
-			if(!ClientPrefs.data.shaders) return false;
+			// 0.6.3 used ClientPrefs.shaders; 1.0.4 uses ClientPrefs.data.shaders
+			var shadersOn:Bool = true;
+			try { shadersOn = ClientPrefs.data.shaders; } catch (e:Dynamic) {}
+			if (!shadersOn) return false;
 
-			#if (!flash && MODS_ALLOWED && sys)
+			#if (!flash && sys)
 			return funk.initLuaShader(name, glslVersion);
 			#else
 			FunkinLua.luaTrace("initLuaShader: Platform unsupported for Runtime Shaders!", false, false, FlxColor.RED);
@@ -22,7 +25,9 @@ class ShaderFunctions
 		});
 		
 		funk.addLocalCallback("setSpriteShader", function(obj:String, shader:String) {
-			if(!ClientPrefs.data.shaders) return false;
+			var shadersOn:Bool = true;
+			try { shadersOn = ClientPrefs.data.shaders; } catch (e:Dynamic) {}
+			if(!shadersOn) return false;
 
 			#if (!flash && sys)
 			if(!funk.runtimeShaders.exists(shader) && !funk.initLuaShader(shader))
@@ -39,7 +44,12 @@ class ShaderFunctions
 
 			if(leObj != null) {
 				var arr:Array<String> = funk.runtimeShaders.get(shader);
-				leObj.shader = new shaders.ErrorHandledShader.ErrorHandledRuntimeShader(shader, arr[0], arr[1]);
+				// 1.0.4 path: ErrorHandledRuntimeShader; fallback: classic FlxRuntimeShader (0.6.3/0.7.3 style)
+				try {
+					leObj.shader = new shaders.ErrorHandledShader.ErrorHandledRuntimeShader(shader, arr[0], arr[1]);
+				} catch (e:Dynamic) {
+					leObj.shader = new FlxRuntimeShader(arr[0], arr[1]);
+				}
 				return true;
 			}
 			#else
