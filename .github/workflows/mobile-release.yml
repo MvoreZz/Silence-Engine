@@ -46,7 +46,7 @@ jobs:
         run: |
           sh ./setup/unix.sh
           haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
-          haxelib git hxCodec https://github.com/SPLCoding/hxCodec-but-it-works-xd.git --quiet || true
+          haxelib git hxCodec https://github.com/polybiusproxy/hxCodec --quiet || true
           echo "=== Haxe Version ==="
           haxe -version
           echo "=== Haxelib List (before force set) ==="
