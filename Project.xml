@@ -126,7 +126,7 @@
 	     1) haxelib install hxcodec
 	     2) Uncomment the next line to enable MP4Handler / startVideo063 / FlxVideo mods
 	============================================================================ -->
-	<!-- <set name="hxcodec" /> -->
+	<set name="hxcodec"/>
 	<haxelib name="hxcodec" if="hxcodec"/>
 	<define name="hxcodec" if="hxcodec"/>
 	<haxelib name="hxdiscord_rpc" if="DISCORD_ALLOWED"/>
