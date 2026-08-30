@@ -428,6 +428,7 @@ class HScript extends Iris
 				} else Reflect.setProperty(c, variable, value);
 			} catch (e:Dynamic) {}
 		});
+		// COMPAT_PATCH_NO_DOUBLE_SEMI
 		set('controls', Controls.instance);
 
 		set('buildTarget', LuaUtils.getBuildTarget());
