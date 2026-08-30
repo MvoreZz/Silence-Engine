@@ -427,7 +427,7 @@ class HScript extends Iris
 					Reflect.setProperty(obj, split[split.length - 1], value);
 				} else Reflect.setProperty(c, variable, value);
 			} catch (e:Dynamic) {}
-		});;
+		});
 		set('controls', Controls.instance);
 
 		set('buildTarget', LuaUtils.getBuildTarget());
