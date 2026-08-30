@@ -7,6 +7,7 @@ import llua.State;
 import llua.Lua.Lua_helper;
 import llua.Convert;
 import flixel.FlxG;
+import flixel.FlxSprite;
 import flixel.util.FlxColor;
 
 /**
@@ -178,6 +179,49 @@ class LegacyCompat
 		});
 		Lua_helper.add_callback(lua, "getSongMisses", function() {
 			return PlayState.instance != null ? PlayState.instance.songMisses : 0;
+		});
+
+
+		// ========== Shaders (0.6.3 / 0.7.3 same names as 1.0.4 — global re-register) ==========
+		Lua_helper.add_callback(lua, "initLuaShader", function(name:String, ?glslVersion:Int = 120) {
+			if (funk == null) return false;
+			return funk.initLuaShader(name, glslVersion);
+		});
+		Lua_helper.add_callback(lua, "setSpriteShader", function(obj:String, shader:String) {
+			#if (!flash && sys)
+			try {
+				if (!funk.runtimeShaders.exists(shader) && !funk.initLuaShader(shader))
+					return false;
+				var split = obj.split('.');
+				var leObj:FlxSprite = LuaUtils.getObjectDirectly(split[0]);
+				if (split.length > 1)
+					leObj = LuaUtils.getVarInArray(LuaUtils.getPropertyLoop(split), split[split.length - 1]);
+				if (leObj == null) return false;
+				var arr = funk.runtimeShaders.get(shader);
+				try {
+					leObj.shader = new shaders.ErrorHandledShader.ErrorHandledRuntimeShader(shader, arr[0], arr[1]);
+				} catch (e:Dynamic) {
+					#if (!flash && sys)
+					leObj.shader = new flixel.addons.display.FlxRuntimeShader(arr[0], arr[1]);
+					#end
+				}
+				return true;
+			} catch (e:Dynamic) {
+				return false;
+			}
+			#else
+			return false;
+			#end
+		});
+		Lua_helper.add_callback(lua, "removeSpriteShader", function(obj:String) {
+			try {
+				var split = obj.split('.');
+				var leObj:FlxSprite = LuaUtils.getObjectDirectly(split[0]);
+				if (split.length > 1)
+					leObj = LuaUtils.getVarInArray(LuaUtils.getPropertyLoop(split), split[split.length - 1]);
+				if (leObj != null) { leObj.shader = null; return true; }
+			} catch (e:Dynamic) {}
+			return false;
 		});
 
 		// Safety: ensure core 0.6.3 property API exists even if ReflectionFunctions order fails
