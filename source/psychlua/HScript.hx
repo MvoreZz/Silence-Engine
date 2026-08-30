@@ -320,11 +320,8 @@ class HScript extends Iris
 
 		set('addHaxeLibrary', function(libName:String, ?libPackage:String = '') {
 			try {
-				var str:String = '';
-				if(libPackage.length > 0)
-					str = libPackage + '.';
-
-				set(libName, Type.resolveClass(str + libName));
+				var c:Dynamic = HScript.resolveLibraryClass(libName, libPackage != null ? libPackage : '');
+				if (c != null) set(libName, c);
 			}
 			catch (e:IrisError) {
 				Iris.error(Printer.errorToString(e, false), this.interp.posInfos());
@@ -392,6 +389,35 @@ class HScript extends Iris
 	}
 
 	#if LUA_ALLOWED
+
+	/** Resolve class with 0.6.3/0.7.3 video aliases (hxCodec) without breaking normal resolve */
+	public static function resolveLibraryClass(libName:String, libPackage:String = ''):Dynamic
+	{
+		if (libName == null) libName = '';
+		var candidates:Array<String> = [];
+		if (libPackage != null && libPackage.length > 0)
+			candidates.push(libPackage + '.' + libName);
+		candidates.push(libName);
+
+		// Official Psych 0.6.3 / 0.7.3 video class names → hxCodec packages
+		if (libName == 'VideoHandler' || libName == 'MP4Handler' || libName == 'FlxVideo')
+		{
+			candidates.push('hxcodec.VideoHandler');
+			candidates.push('hxcodec.flixel.FlxVideo');
+			candidates.push('hxcodec.vlc.MP4Handler');
+			candidates.push('vlc.MP4Handler');
+		}
+
+		for (path in candidates)
+		{
+			var c:Dynamic = Type.resolveClass(path);
+			if (c != null) return c;
+			c = Type.resolveEnum(path);
+			if (c != null) return c;
+		}
+		return null;
+	}
+
 	public static function implement(funk:FunkinLua) {
 		funk.addLocalCallback("runHaxeCode", function(codeToRun:String, ?varsToBring:Any = null, ?funcToRun:String = null, ?funcArgs:Array<Dynamic> = null):Dynamic {
 			initHaxeModuleCode(funk, codeToRun, varsToBring);
@@ -429,15 +455,9 @@ class HScript extends Iris
 		});
 		// This function is unnecessary because import already exists in HScript as a native feature
 		funk.addLocalCallback("addHaxeLibrary", function(libName:String, ?libPackage:String = '') {
-			var str:String = '';
-			if (libPackage.length > 0)
-				str = libPackage + '.';
-			else if (libName == null)
-				libName = '';
-
-			var c:Dynamic = Type.resolveClass(str + libName);
-			if (c == null)
-				c = Type.resolveEnum(str + libName);
+			if (libName == null) libName = '';
+			var pkg:String = (libPackage != null) ? libPackage : '';
+			var c:Dynamic = HScript.resolveLibraryClass(libName, pkg);
 
 			if (funk.hscript == null)
 				initHaxeModule(funk);
