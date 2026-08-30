@@ -378,6 +378,56 @@ class HScript extends Iris
 		set('VideoHandler', psychlua.VideoHandlerShim);
 		set('MP4Handler', psychlua.VideoHandlerShim);
 		set('FlxVideo', psychlua.VideoHandlerShim);
+
+		// 0.6.3/0.7.3 mods sometimes call these from HScript/runHaxeCode
+		set('setProperty', function(variable:String, value:Dynamic) {
+			try {
+				var split = variable.split('.');
+				if (split.length > 1)
+					LuaUtils.setVarInArray(LuaUtils.getPropertyLoop(split), split[split.length - 1], value);
+				else
+					LuaUtils.setVarInArray(PlayState.instance, variable, value);
+			} catch (e:Dynamic) {
+				trace('HScript setProperty: ' + e);
+			}
+		});
+		set('getProperty', function(variable:String):Dynamic {
+			try {
+				var split = variable.split('.');
+				if (split.length > 1)
+					return LuaUtils.getVarInArray(LuaUtils.getPropertyLoop(split), split[split.length - 1]);
+				return LuaUtils.getVarInArray(PlayState.instance, variable);
+			} catch (e:Dynamic) {
+				return null;
+			}
+		});
+		set('getPropertyFromClass', function(classVar:String, variable:String):Dynamic {
+			try {
+				var c = Type.resolveClass(classVar);
+				if (c == null) return null;
+				var split = variable.split('.');
+				if (split.length > 1) {
+					var obj = Reflect.getProperty(c, split[0]);
+					for (i in 1...split.length - 1) obj = Reflect.getProperty(obj, split[i]);
+					return Reflect.getProperty(obj, split[split.length - 1]);
+				}
+				return Reflect.getProperty(c, variable);
+			} catch (e:Dynamic) {
+				return null;
+			}
+		});
+		set('setPropertyFromClass', function(classVar:String, variable:String, value:Dynamic) {
+			try {
+				var c = Type.resolveClass(classVar);
+				if (c == null) return;
+				var split = variable.split('.');
+				if (split.length > 1) {
+					var obj = Reflect.getProperty(c, split[0]);
+					for (i in 1...split.length - 1) obj = Reflect.getProperty(obj, split[i]);
+					Reflect.setProperty(obj, split[split.length - 1], value);
+				} else Reflect.setProperty(c, variable, value);
+			} catch (e:Dynamic) {}
+		});;
 		set('controls', Controls.instance);
 
 		set('buildTarget', LuaUtils.getBuildTarget());
