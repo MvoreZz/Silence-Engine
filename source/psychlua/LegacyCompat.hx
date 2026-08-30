@@ -135,6 +135,20 @@ class LegacyCompat
 
 		// 0.6.3 shader note: initLuaShader / setSpriteShader exist on 1.0.4 ShaderFunctions
 
+		
+		// 0.6.3-style: ensure HScript can construct VideoHandler without addHaxeLibrary
+		// (also registered in HScript.resolveLibraryClass → VideoHandlerShim)
+
+		Lua_helper.add_callback(lua, "startVideo063", function(videoFile:String) {
+			#if VIDEOS_ALLOWED
+			if (PlayState.instance != null) {
+				PlayState.instance.startVideo063(videoFile);
+				return true;
+			}
+			#end
+			return false;
+		});
+
 		// 0.6.3 / 0.7.3: changeCharacter("dad", "pico")
 		Lua_helper.add_callback(lua, "changeCharacter", function(charType:String, charName:String) {
 			if (PlayState.instance == null) return false;
