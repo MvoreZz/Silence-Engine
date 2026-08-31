@@ -1589,6 +1589,12 @@ class FunkinLua {
 		ShaderFunctions.implement(this);
 		DeprecatedFunctions.implement(this);
 		#if LUA_ALLOWED
+		Lua_helper.add_callback(lua, "createRuntimeShader", function(name:String) {
+			#if (!flash && sys)
+			if (game != null) return game.createRuntimeShader(name);
+			#end
+			return null;
+		});
 		LegacyCompat.implement(this); // 0.6.3 / 0.7.3 additive Lua
 		#end
 		MobileFunctions.implement(this);
