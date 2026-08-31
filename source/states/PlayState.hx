@@ -3937,7 +3937,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	#end
 	/**
 	 * Used by stage/HScript mods (e.g. game.createRuntimeShader('particles')).
-	 * Loads mods/**/shaders/name.frag (+ optional .vert). Returns ErrorHandledRuntimeShader.
+	 * Loads mods/.../shaders/name.frag (+ optional .vert). Returns ErrorHandledRuntimeShader.
 	 */
 	public function createRuntimeShader(shaderName:String):ErrorHandledRuntimeShader
 	{
