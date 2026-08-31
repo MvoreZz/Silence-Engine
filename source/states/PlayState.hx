@@ -37,9 +37,6 @@ import openfl.filters.ShaderFilter;
 import shaders.ErrorHandledShader;
 
 import objects.VideoSprite;
-#if (VIDEOS_ALLOWED && hxcodec)
-import hxcodec.VideoHandler as MP4Handler; // Psych 0.6.3-style video
-#end
 import objects.Note.EventNote;
 import objects.*;
 import states.stages.*;
@@ -951,35 +948,11 @@ class PlayState extends MusicBeatState
 
 
 	/**
-	 * Psych 0.6.3 video path (hxCodec MP4Handler) — does not replace 1.0.4 VideoSprite startVideo.
-	 * Requires: haxelib hxcodec + Project.xml define hxcodec
+	 * 0.6.3/0.7.3-style single-arg video API (maps to 1.0.4 hxvlc — hxCodec cannot coexist with hxvlc).
 	 */
 	public function startVideo063(name:String):Void
 	{
-		#if (VIDEOS_ALLOWED && hxcodec)
-		inCutscene = true;
-
-		var filepath:String = Paths.video(name);
-		#if sys
-		if (!FileSystem.exists(filepath))
-		#else
-		if (!OpenFlAssets.exists(filepath))
-		#end
-		{
-			FlxG.log.warn('Couldnt find video file: ' + name);
-			startAndEnd();
-			return;
-		}
-
-		var video:MP4Handler = new MP4Handler();
-		video.playVideo(filepath);
-		video.finishCallback = function()
-		{
-			startAndEnd();
-			return;
-		}
-		#elseif VIDEOS_ALLOWED
-		// Fallback: 1.0.4 VideoSprite path if hxcodec not compiled in
+		#if VIDEOS_ALLOWED
 		startVideo(name);
 		#else
 		FlxG.log.warn('Platform not supported!');
@@ -3962,19 +3935,34 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	#if (!flash && sys)
 	public var runtimeShaders:Map<String, Array<String>> = new Map<String, Array<String>>();
 	#end
+	/**
+	 * Used by stage/HScript mods (e.g. game.createRuntimeShader('particles')).
+	 * Loads mods/**/shaders/name.frag (+ optional .vert). Returns ErrorHandledRuntimeShader.
+	 */
 	public function createRuntimeShader(shaderName:String):ErrorHandledRuntimeShader
 	{
 		#if (!flash && sys)
-		if(!ClientPrefs.data.shaders) return new ErrorHandledRuntimeShader(shaderName);
+		var shadersOn:Bool = true;
+		try { shadersOn = ClientPrefs.data.shaders; } catch (e:Dynamic) {}
+		if (!shadersOn)
+			return new ErrorHandledRuntimeShader(shaderName);
 
-		if(!runtimeShaders.exists(shaderName) && !initLuaShader(shaderName))
+		if (!runtimeShaders.exists(shaderName) && !initLuaShader(shaderName))
 		{
-			FlxG.log.warn('Shader $shaderName is missing!');
+			FlxG.log.warn('Shader $shaderName is missing! Put it in shaders/' + shaderName + '.frag');
 			return new ErrorHandledRuntimeShader(shaderName);
 		}
 
 		var arr:Array<String> = runtimeShaders.get(shaderName);
-		return new ErrorHandledRuntimeShader(shaderName, arr[0], arr[1]);
+		if (arr == null)
+			return new ErrorHandledRuntimeShader(shaderName);
+
+		try {
+			return new ErrorHandledRuntimeShader(shaderName, arr[0], arr[1]);
+		} catch (e:Dynamic) {
+			FlxG.log.warn('createRuntimeShader($shaderName) failed: ' + e);
+			return new ErrorHandledRuntimeShader(shaderName);
+		}
 		#else
 		FlxG.log.warn("Platform unsupported for Runtime Shaders!");
 		return null;
