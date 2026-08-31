@@ -176,6 +176,10 @@ class HScript extends Iris
 		set('ErrorHandledRuntimeShader', shaders.ErrorHandledShader.ErrorHandledRuntimeShader);
 		#end
 		set('ShaderFilter', openfl.filters.ShaderFilter);
+		set('createRuntimeShader', function(name:String) {
+			if (PlayState.instance == null) return null;
+			return PlayState.instance.createRuntimeShader(name);
+		});
 		set('StringTools', StringTools);
 		#if flxanimate
 		set('FlxAnimate', FlxAnimate);
@@ -375,6 +379,7 @@ class HScript extends Iris
 		#end
 		set('this', this);
 				set('game', FlxG.state);
+		set('camera', FlxG.camera); // common script alias for camGame/main camera
 		set('VideoHandler', psychlua.VideoHandlerShim);
 		set('MP4Handler', psychlua.VideoHandlerShim);
 		set('FlxVideo', psychlua.VideoHandlerShim);
@@ -450,6 +455,16 @@ class HScript extends Iris
 		{
 			var shim:Dynamic = Type.resolveClass('psychlua.VideoHandlerShim');
 			if (shim != null) return shim;
+		}
+		if (low == 'shaderfilter')
+		{
+			var sf:Dynamic = Type.resolveClass('openfl.filters.ShaderFilter');
+			if (sf != null) return sf;
+		}
+		if (low == 'flxruntimeshader')
+		{
+			var rs:Dynamic = Type.resolveClass('flixel.addons.display.FlxRuntimeShader');
+			if (rs != null) return rs;
 		}
 		var candidates:Array<String> = [];
 		if (libPackage != null && libPackage.length > 0)
