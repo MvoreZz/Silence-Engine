@@ -1463,9 +1463,10 @@ class PlayState extends MusicBeatState
 				unspawnNotes.push(swagNote);
 
 				var curStepCrochet:Float = 60 / daBpm * 1000 / 4.0;
-				// Skip micro-holds from chart editor (too short to render → false hold splash)
 				final roundSus:Int = Math.round(swagNote.sustainLength / curStepCrochet);
-				if(roundSus > 0 && swagNote.sustainLength >= curStepCrochet * 0.5)
+				if (roundSus < 1 || swagNote.sustainLength < curStepCrochet)
+					swagNote.sustainLength = 0;
+				else if (roundSus > 0)
 				{
 					for (susNote in 0...roundSus)
 					{
@@ -3297,11 +3298,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 		note.hitByOpponent = true;
 
-		// Hold Splash for opponent (on note head if it has a sustain tail)
-		// Opponent hold splash disabled in V-Slice mode
 		if (!ClientPrefs.data.vsliceMobileControls
-			&& !note.isSustainNote && note.tail.length > 0
-			&& note.sustainLength >= Conductor.stepCrochet * 0.5
+			&& !note.isSustainNote && note.tail.length >= 2
+			&& note.sustainLength >= Conductor.stepCrochet
 			&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 		{
 			var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
@@ -3388,9 +3387,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
 
-				// Hold Splash — skip if hold too short to show (chart micro-holds)
-				if (note.tail.length > 0
-					&& note.sustainLength >= Conductor.stepCrochet * 0.5
+				if (note.tail.length >= 2
+					&& note.sustainLength >= Conductor.stepCrochet
 					&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 				{
 					var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
