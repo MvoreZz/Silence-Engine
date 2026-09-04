@@ -68,14 +68,24 @@ class Hitbox extends MobileInputManager implements IMobileControls
 
 		if (ClientPrefs.data.vsliceMobileControls)
 		{
-			// Touch zones under bottom player strums (V-Slice layout)
+			// V-Slice: same X as player strums; hitbox extends UP to health bar top (arrows unchanged)
 			final zoneW:Int = Std.int(FlxG.width * 0.155);
 			final gap:Int = Std.int(FlxG.width * 0.018);
 			final total:Int = zoneW * 4 + gap * 3;
 			final startX:Int = Std.int((FlxG.width - total) / 2);
-			final zoneH:Int = Std.int(FlxG.height * 0.35);
-			final zoneY:Int = FlxG.height - zoneH;
 			final pairPull:Int = Std.int(FlxG.width * 0.012);
+
+			// Top edge = health bar top; bottom = screen bottom
+			var zoneY:Int = Std.int(FlxG.height * 0.15);
+			try
+			{
+				if (PlayState.instance != null && PlayState.instance.healthBar != null)
+					zoneY = Std.int(PlayState.instance.healthBar.y);
+			}
+			catch (e:Dynamic) {}
+			if (zoneY < 0) zoneY = 0;
+			if (zoneY > FlxG.height - 80) zoneY = Std.int(FlxG.height * 0.15);
+			final zoneH:Int = FlxG.height - zoneY;
 
 			add(buttonLeft = createHint(startX + pairPull, zoneY, zoneW, zoneH, 0xFFC24B99));
 			add(buttonDown = createHint(startX + (zoneW + gap) * 1 - Std.int(pairPull * 0.3), zoneY, zoneW, zoneH, 0xFF00FFFF));
