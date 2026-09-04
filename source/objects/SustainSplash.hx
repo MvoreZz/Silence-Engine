@@ -65,7 +65,7 @@ class SustainSplash extends FlxSprite
 		final susLen:Float = (parentNote != null) ? parentNote.sustainLength : 0;
 		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
 
-		if (lengthToGet <= 0 || susLen < startCrochet * 0.5)
+		if (lengthToGet < 2 || susLen < startCrochet)
 			return;
 
 		strumNote = strum;
