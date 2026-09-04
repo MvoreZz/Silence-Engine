@@ -57,14 +57,15 @@ class SustainSplash extends FlxSprite
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
-		// Just reset the state; do NOT call kill() (recycle might have just revived it)
 		resetSplashState();
 
-		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
-		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
+		final parentNote:Note = !daNote.isSustainNote ? daNote : daNote.parent;
+		final lengthToGet:Int = (parentNote != null) ? parentNote.tail.length : 0;
+		final timeToGet:Float = (parentNote != null) ? parentNote.strumTime : daNote.strumTime;
+		final susLen:Float = (parentNote != null) ? parentNote.sustainLength : 0;
 		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
 
-		if (lengthToGet <= 0)
+		if (lengthToGet <= 0 || susLen < startCrochet * 0.5)
 			return;
 
 		strumNote = strum;
@@ -162,7 +163,6 @@ class SustainSplash extends FlxSprite
 	override function revive()
 	{
 		super.revive();
-		// Ensure the old image doesn't appear immediately upon recycling
 		visible = false;
 		alpha = 0;
 		x = -50000;
