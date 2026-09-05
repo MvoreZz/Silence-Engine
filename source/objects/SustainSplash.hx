@@ -59,13 +59,11 @@ class SustainSplash extends FlxSprite
 	{
 		resetSplashState();
 
-		final parentNote:Note = !daNote.isSustainNote ? daNote : daNote.parent;
-		final lengthToGet:Int = (parentNote != null) ? parentNote.tail.length : 0;
-		final timeToGet:Float = (parentNote != null) ? parentNote.strumTime : daNote.strumTime;
-		final susLen:Float = (parentNote != null) ? parentNote.sustainLength : 0;
+		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
+		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
 		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
 
-		if (lengthToGet < 2 || susLen < startCrochet)
+		if (lengthToGet <= 0)
 			return;
 
 		strumNote = strum;
