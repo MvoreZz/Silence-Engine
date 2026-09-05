@@ -1463,10 +1463,10 @@ class PlayState extends MusicBeatState
 				unspawnNotes.push(swagNote);
 
 				var curStepCrochet:Float = 60 / daBpm * 1000 / 4.0;
-				final roundSus:Int = Math.round(swagNote.sustainLength / curStepCrochet);
-				if (roundSus < 1 || swagNote.sustainLength < curStepCrochet)
-					swagNote.sustainLength = 0;
-				else if (roundSus > 0)
+				var roundSus:Int = Math.round(swagNote.sustainLength / curStepCrochet);
+				if (swagNote.sustainLength > 0 && roundSus < 1)
+					roundSus = 1;
+				if (roundSus > 0)
 				{
 					for (susNote in 0...roundSus)
 					{
@@ -3299,8 +3299,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		note.hitByOpponent = true;
 
 		if (!ClientPrefs.data.vsliceMobileControls
-			&& !note.isSustainNote && note.tail.length >= 2
-			&& note.sustainLength >= Conductor.stepCrochet
+			&& !note.isSustainNote && note.tail.length > 0
 			&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 		{
 			var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
@@ -3387,9 +3386,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
 
-				if (note.tail.length >= 2
-					&& note.sustainLength >= Conductor.stepCrochet
-					&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
+				if (note.tail.length > 0 && !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 				{
 					var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
 					holdSplash.setupSusSplash(playerStrums.members[note.noteData], note, playbackRate);
