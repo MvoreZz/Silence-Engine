@@ -1,0 +1,91 @@
+name: Issue Report
+description: Report issues or problems to help us fix them.
+title: "[ISSUE]: "
+labels: ["issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide as much detail as possible so we can identify and fix the problem quickly.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: "Which platform are you using? (iOS or Android)"
+      description: "Please select your operating system."
+      options:
+        - "iOS"
+        - "Android"
+        - "Both / Cross-platform"
+        - "Other (Desktop, etc.)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue_message
+    attributes:
+      label: "Issue Details / Log"
+      description: "Paste the exact issue details, error, warning or crash log here. If none, write 'None'."
+      placeholder: "Paste your log here or type 'None' if you don't have a crash log..."
+      render: bash
+    validations:
+      required: false
+
+  - type: textarea
+    id: issue_context
+    attributes:
+      label: "Steps & Context"
+      description: "When does this issue happen? Describe what you were doing when it occurred."
+      placeholder: "Describe when the issue happens (e.g. while playing a song, opening a mod, or running a script)..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mod_engine_ver
+    attributes:
+      label: "Mod Target Engine Version"
+      description: "Which Psych Engine version is the mod designed for / compatible with?"
+      options:
+        - "1.0.4"
+        - "1.0.3"
+        - "1.0.2"
+        - "1.0.1"
+        - "1.0"
+        - "0.7.3"
+        - "0.7.1 / 0.7.2"
+        - "0.6.3 or older"
+        - "Unknown / Not specified by mod creator"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: script_type
+    attributes:
+      label: "Script / File Type"
+      description: "Which type of script file is causing the issue?"
+      options:
+        - "Lua (.lua)"
+        - "Haxe (.hx)"
+        - "Both Lua & Haxe"
+        - "Other / Not script related"
+    validations:
+      required: true
+
+  - type: textarea
+    id: script_file
+    attributes:
+      label: "Script File Content (If Applicable)"
+      description: "If the issue is caused by a specific script, paste the code here."
+      placeholder: "-- Paste your Lua or Haxe code here"
+      render: haxe
+    validations:
+      required: false
+
+  - type: input
+    id: media_attachment
+    attributes:
+      label: "Screenshots or Video (Optional)"
+      description: "Optional: If you don't want to attach a screenshot or if you prefer to explain with a video, attach image/video files here or paste links."
+      placeholder: "Drag & drop screenshots/videos here or paste links (Optional)"
+    validations:
+      required: false
