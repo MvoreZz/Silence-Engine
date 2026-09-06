@@ -1,0 +1,37 @@
+name: Feature Request
+description: Suggest a new feature or improvement for the project.
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please answer the questions below.
+
+  - type: textarea
+    id: feature_concept
+    attributes:
+      label: "1. What do you want to see in the game?"
+      description: "Describe what feature or addition you would like us to add."
+      placeholder: "Write here what you want to see in the game..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature_details
+    attributes:
+      label: "2. Give an example and details"
+      description: "Explain how it should work or give a clear example."
+      placeholder: "Provide more details or explain how this feature works with an example..."
+    validations:
+      required: true
+
+  - type: input
+    id: feature_media
+    attributes:
+      label: "3. Screenshot or Reference Video (Optional)"
+      description: "Attach images, UI concept mockups, or video links if possible."
+      placeholder: "Drag & drop screenshots/videos here or paste links (Optional)"
+    validations:
+      required: false
+      
