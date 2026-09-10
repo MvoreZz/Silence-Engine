@@ -8,16 +8,12 @@ class SustainSplash extends FlxSprite
 	public var strumNote:StrumNote;
 
 	var timer:FlxTimer;
-	var ending:Bool = false;
-	var activeSplash:Bool = false;
 
 	public function new():Void
 	{
 		super();
 
 		x = -50000;
-		visible = false;
-		alpha = 0;
 
 		frames = Paths.getSparrowAtlas('holdCovers/holdCover-' + ClientPrefs.data.holdSkin);
 
@@ -31,14 +27,10 @@ class SustainSplash extends FlxSprite
 	{
 		super.update(elapsed);
 
-		if (!activeSplash || strumNote == null)
-			return;
-
-		setPosition(strumNote.x, strumNote.y);
-		visible = strumNote.visible && activeSplash;
-
-		if (!ending)
+		if (strumNote != null)
 		{
+			setPosition(strumNote.x, strumNote.y);
+			visible = strumNote.visible;
 			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 
 			if (animation.curAnim != null
@@ -46,31 +38,17 @@ class SustainSplash extends FlxSprite
 				&& strumNote.animation.curAnim != null
 				&& strumNote.animation.curAnim.name == "static")
 			{
-				finishSplash();
+				x = -50000;
+				kill();
 			}
-		}
-		else
-		{
-			alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 		}
 	}
 
 	public function setupSusSplash(strum:StrumNote, daNote:Note, ?playbackRate:Float = 1):Void
 	{
-		resetSplashState();
-
 		final lengthToGet:Int = !daNote.isSustainNote ? daNote.tail.length : daNote.parent.tail.length;
 		final timeToGet:Float = !daNote.isSustainNote ? daNote.strumTime : daNote.parent.strumTime;
 		final timeThingy:Float = (startCrochet * lengthToGet + (timeToGet - Conductor.songPosition + ClientPrefs.data.ratingOffset)) / playbackRate * 0.001;
-
-		if (lengthToGet <= 0)
-			return;
-		if (timeThingy < 0.05)
-			return;
-
-		strumNote = strum;
-		ending = false;
-		activeSplash = true;
 
 		animation.play('hold', true, false, 0);
 		if (animation.curAnim != null)
@@ -78,7 +56,6 @@ class SustainSplash extends FlxSprite
 			animation.curAnim.frameRate = frameRate;
 			animation.curAnim.looped = true;
 		}
-
 		clipRect = new flixel.math.FlxRect(0, !PlayState.isPixelStage ? 0 : -210, frameWidth, frameHeight);
 
 		if (daNote.shader != null)
@@ -94,80 +71,40 @@ class SustainSplash extends FlxSprite
 			catch (e:Dynamic) {}
 		}
 
-		setPosition(strum.x, strum.y);
+		strumNote = strum;
+		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strumNote.alpha);
 		offset.set(PlayState.isPixelStage ? 112.5 : 106.25, 100);
-		alpha = ClientPrefs.data.holdSplashAlpha - (1 - strum.alpha);
 		visible = true;
 
-		if (daNote.hitByOpponent || ClientPrefs.data.holdSplashAlpha == 0)
-			return;
-
-		timer = new FlxTimer().start(timeThingy, function(_)
-		{
-			if (!activeSplash || animation == null)
-			{
-				finishSplash();
-				return;
-			}
-
-			final disabled:Bool = daNote.isSustainNote
-				? (daNote.parent != null && daNote.parent.noteSplashData.disabled)
-				: daNote.noteSplashData.disabled;
-
-			if (disabled)
-			{
-				finishSplash();
-				return;
-			}
-
-			ending = true;
-			clipRect = null;
-			animation.play('end', true, false, 0);
-			if (animation.curAnim != null)
-			{
-				animation.curAnim.looped = false;
-				animation.curAnim.frameRate = 24;
-			}
-			animation.finishCallback = function(__)
-			{
-				finishSplash();
-			};
-		});
-	}
-
-	function resetSplashState():Void
-	{
-		ending = false;
-		activeSplash = false;
 		if (timer != null)
-		{
 			timer.cancel();
-			timer = null;
+
+		if (!daNote.hitByOpponent && ClientPrefs.data.holdSplashAlpha != 0)
+		{
+			timer = new FlxTimer().start(timeThingy, function(_)
+			{
+				final disabled:Bool = daNote.isSustainNote
+					? (daNote.parent != null && daNote.parent.noteSplashData.disabled)
+					: daNote.noteSplashData.disabled;
+
+				if (!disabled && animation != null)
+				{
+					alpha = ClientPrefs.data.holdSplashAlpha - (1 - (strumNote != null ? strumNote.alpha : 1));
+					animation.play('end', true, false, 0);
+					if (animation.curAnim != null)
+					{
+						animation.curAnim.looped = false;
+						animation.curAnim.frameRate = 24;
+					}
+					clipRect = null;
+					animation.finishCallback = function(__)
+					{
+						kill();
+					};
+					return;
+				}
+				kill();
+			});
 		}
-		if (animation != null)
-			animation.finishCallback = null;
-		strumNote = null;
-		clipRect = null;
-	}
-
-	function finishSplash():Void
-	{
-		resetSplashState();
-		visible = false;
-		alpha = 0;
-		x = -50000;
-		y = -50000;
-		kill();
-	}
-
-	override function revive()
-	{
-		super.revive();
-		visible = false;
-		alpha = 0;
-		x = -50000;
-		y = -50000;
-		activeSplash = false;
-		ending = false;
 	}
 }
