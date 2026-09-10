@@ -4037,6 +4037,13 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			return;
 
 		var end:Note = note.tail[note.tail.length - 1];
+		if (end != null && end.extraData.exists('holdSplash'))
+		{
+			var existing:Dynamic = end.extraData.get('holdSplash');
+			if (existing != null && existing.alive && existing.activeSplash)
+				return;
+		}
+
 		var splash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
 		splash.setupSusSplash(strum, note, playbackRate);
 		grpHoldSplashes.add(splash);
@@ -4178,3 +4185,4 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			FlxG.signals.preUpdate.add(checkForResync);
 	}
 }
+
