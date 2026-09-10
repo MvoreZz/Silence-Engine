@@ -122,7 +122,7 @@
 	<haxelib name="SScript" if="SSCRIPT_LEGACY_ALLOWED"/>
 	<haxelib name="hxvlc" if="VIDEOS_ALLOWED"/>
 
-	<!-- ========== 0.6.3 / 0.7.3 video (hxCodec) — does NOT replace hxvlc and dont active ========= -->
+	<!-- ========== HXCODEC — does NOT replace hxvlc and dont active ========= -->
 	<!-- <set name="hxcodec" /> -->
 	<haxelib name="hxcodec" if="hxcodec"/>
 	<define name="hxcodec" if="hxcodec"/>
