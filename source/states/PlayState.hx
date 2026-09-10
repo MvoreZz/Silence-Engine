@@ -558,7 +558,7 @@ class PlayState extends MusicBeatState
 
 		healthBar = new Bar(0, FlxG.height * (!ClientPrefs.data.downScroll ? 0.89 : 0.11), 'healthBar', function() return health, 0, 2);
 		healthBar.screenCenter(X);
-		healthBar.leftToRight = opponentMode;
+		healthBar.leftToRight = false;
 		healthBar.scrollFactor.set();
 		healthBar.visible = !ClientPrefs.data.hideHud;
 		healthBar.alpha = ClientPrefs.data.healthBarAlpha;
@@ -2077,12 +2077,17 @@ class PlayState extends MusicBeatState
 		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
 		healthBar.percent = (newPercent != null ? newPercent : 0);
 
-		var playerIcon:HealthIcon = opponentMode ? iconP2 : iconP1;
-		var oppIcon:HealthIcon = opponentMode ? iconP1 : iconP2;
-		if (playerIcon != null && playerIcon.animation != null && playerIcon.animation.curAnim != null)
-			playerIcon.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0;
-		if (oppIcon != null && oppIcon.animation != null && oppIcon.animation.curAnim != null)
-			oppIcon.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0;
+		if (opponentMode)
+		{
+			// Playing as opponent: high health = dad winning, bf losing
+			iconP1.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0;
+			iconP2.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0;
+		}
+		else
+		{
+			iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; // player losing under 20%
+			iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; // opponent losing over 80%
+		}
 		return health;
 	}
 
@@ -3147,6 +3152,23 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	}
 
 	function noteMiss(daNote:Note):Void { //You didn't hit the key and let it go offscreen, also used by Hurt Notes
+		if (daNote != null)
+		{
+			var head:Note = daNote.isSustainNote && daNote.parent != null ? daNote.parent : daNote;
+			if (head.tail.length > 0)
+			{
+				var end:Note = head.tail[head.tail.length - 1];
+				if (end != null && end.extraData.exists('holdSplash'))
+				{
+					var s:Dynamic = end.extraData.get('holdSplash');
+					if (s != null)
+					{
+						try { s.kill(); } catch (e:Dynamic) {}
+						end.extraData.remove('holdSplash');
+					}
+				}
+			}
+		}
 		//Dupe note remove
 		notes.forEachAlive(function(note:Note) {
 			if (daNote != note && daNote.mustPress && daNote.noteData == note.noteData && daNote.isSustainNote == note.isSustainNote && Math.abs(daNote.strumTime - note.strumTime) < 1)
@@ -3288,20 +3310,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		}
 
 		if(opponentVocals.length <= 0) vocals.volume = 1;
-		strumPlayAnim(!opponentMode, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 		note.hitByOpponent = true;
 
-		// Hold Splash for opponent (on note head if it has a sustain tail)
-		// Opponent hold splash disabled in V-Slice mode
-		if (!ClientPrefs.data.vsliceMobileControls
-			&& !note.isSustainNote && note.tail.length > 0 && note.sustainLength > 0
-			&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
-		{
-			var splashStrums = opponentMode ? playerStrums : opponentStrums;
-			var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
-			holdSplash.setupSusSplash(splashStrums.members[note.noteData], note, playbackRate);
-			grpHoldSplashes.add(holdSplash);
-		}
+		if (!ClientPrefs.data.vsliceMobileControls)
+			spawnHoldSplashOnNote(note);
 		
 		stagesFunc(function(stage:BaseStage) stage.opponentNoteHit(note));
 		var result:Dynamic = callOnLuas('opponentNoteHit', [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
@@ -3370,11 +3383,10 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 			if(!cpuControlled)
 			{
-				var sprGroup = opponentMode ? opponentStrums : playerStrums;
-				var spr = sprGroup.members[note.noteData];
+				var spr = playerStrums.members[note.noteData];
 				if(spr != null) spr.playAnim('confirm', true);
 			}
-			else strumPlayAnim(opponentMode, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 			vocals.volume = 1;
 
 			if (!note.isSustainNote)
@@ -3383,14 +3395,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
 
-				if (note.tail.length > 0 && note.sustainLength > 0
-					&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
-				{
-					var splashStrums = opponentMode ? opponentStrums : playerStrums;
-					var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
-					holdSplash.setupSusSplash(splashStrums.members[note.noteData], note, playbackRate);
-					grpHoldSplashes.add(holdSplash);
-				}
+				spawnHoldSplashOnNote(note);
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;
@@ -4013,6 +4018,30 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		FlxG.log.warn('This platform doesn\'t support Runtime Shaders!');
 		#end
 		return false;
+	}
+
+	
+	function spawnHoldSplashOnNote(note:Note):Void
+	{
+		if (ClientPrefs.data.holdSplashAlpha <= 0 || note == null)
+			return;
+		if (note.noteSplashData != null && note.noteSplashData.disabled)
+			return;
+		if (note.isSustainNote)
+			return;
+		if (note.tail.length <= 1)
+			return;
+
+		var strum:StrumNote = (note.mustPress ? playerStrums : opponentStrums).members[note.noteData];
+		if (strum == null)
+			return;
+
+		var end:Note = note.tail[note.tail.length - 1];
+		var splash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
+		splash.setupSusSplash(strum, note, playbackRate);
+		grpHoldSplashes.add(splash);
+		if (end != null)
+			end.extraData.set('holdSplash', splash);
 	}
 
 	public function makeLuaTouchPad(DPadMode:String, ActionMode:String) {
