@@ -558,7 +558,7 @@ class PlayState extends MusicBeatState
 
 		healthBar = new Bar(0, FlxG.height * (!ClientPrefs.data.downScroll ? 0.89 : 0.11), 'healthBar', function() return health, 0, 2);
 		healthBar.screenCenter(X);
-		healthBar.leftToRight = false;
+		healthBar.leftToRight = opponentMode;
 		healthBar.scrollFactor.set();
 		healthBar.visible = !ClientPrefs.data.hideHud;
 		healthBar.alpha = ClientPrefs.data.healthBarAlpha;
@@ -2077,17 +2077,12 @@ class PlayState extends MusicBeatState
 		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
 		healthBar.percent = (newPercent != null ? newPercent : 0);
 
-		if (opponentMode)
-		{
-			// Playing as opponent: high health = dad winning, bf losing
-			iconP1.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0;
-			iconP2.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0;
-		}
-		else
-		{
-			iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; // player losing under 20%
-			iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; // opponent losing over 80%
-		}
+		var playerIcon:HealthIcon = opponentMode ? iconP2 : iconP1;
+		var oppIcon:HealthIcon = opponentMode ? iconP1 : iconP2;
+		if (playerIcon != null && playerIcon.animation != null && playerIcon.animation.curAnim != null)
+			playerIcon.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0;
+		if (oppIcon != null && oppIcon.animation != null && oppIcon.animation.curAnim != null)
+			oppIcon.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0;
 		return health;
 	}
 
@@ -3293,17 +3288,18 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		}
 
 		if(opponentVocals.length <= 0) vocals.volume = 1;
-		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+		strumPlayAnim(!opponentMode, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 		note.hitByOpponent = true;
 
 		// Hold Splash for opponent (on note head if it has a sustain tail)
 		// Opponent hold splash disabled in V-Slice mode
 		if (!ClientPrefs.data.vsliceMobileControls
-			&& !note.isSustainNote && note.tail.length > 0
+			&& !note.isSustainNote && note.tail.length > 0 && note.sustainLength > 0
 			&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 		{
+			var splashStrums = opponentMode ? playerStrums : opponentStrums;
 			var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
-			holdSplash.setupSusSplash(opponentStrums.members[note.noteData], note, playbackRate);
+			holdSplash.setupSusSplash(splashStrums.members[note.noteData], note, playbackRate);
 			grpHoldSplashes.add(holdSplash);
 		}
 		
@@ -3374,10 +3370,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 			if(!cpuControlled)
 			{
-				var spr = playerStrums.members[note.noteData];
+				var sprGroup = opponentMode ? opponentStrums : playerStrums;
+				var spr = sprGroup.members[note.noteData];
 				if(spr != null) spr.playAnim('confirm', true);
 			}
-			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+			else strumPlayAnim(opponentMode, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 			vocals.volume = 1;
 
 			if (!note.isSustainNote)
@@ -3386,11 +3383,12 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
 
-				// Hold Splash (spawn on note head if it has a sustain tail)
-				if (note.tail.length > 0 && !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
+				if (note.tail.length > 0 && note.sustainLength > 0
+					&& !note.noteSplashData.disabled && ClientPrefs.data.holdSplashAlpha > 0)
 				{
+					var splashStrums = opponentMode ? opponentStrums : playerStrums;
 					var holdSplash:SustainSplash = grpHoldSplashes.recycle(SustainSplash);
-					holdSplash.setupSusSplash(playerStrums.members[note.noteData], note, playbackRate);
+					holdSplash.setupSusSplash(splashStrums.members[note.noteData], note, playbackRate);
 					grpHoldSplashes.add(holdSplash);
 				}
 			}
