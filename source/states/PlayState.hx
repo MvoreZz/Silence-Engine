@@ -304,12 +304,8 @@ class PlayState extends MusicBeatState
 		PauseSubState.songName = null; //Reset to default
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
 
-		keysArray = [
-			'note_left',
-			'note_down',
-			'note_up',
-			'note_right'
-		];
+		Song.updateManiaKeys(SONG);
+		keysArray = getKeysArray(Note.maniaKeys);
 
 		if(FlxG.sound.music != null)
 			FlxG.sound.music.stop();
@@ -1347,10 +1343,25 @@ class PlayState extends MusicBeatState
 
 	private var noteTypes:Array<String> = [];
 	private var eventsPushed:Array<String> = [];
-	private var totalColumns: Int = 4;
+	private var totalColumns: Int = 4; // set from Note.maniaKeys in generateSong
+
+	
+	function getKeysArray(keys:Int):Array<String>
+	{
+		if (keys == 4)
+			return ['note_left', 'note_down', 'note_up', 'note_right'];
+		var arr:Array<String> = [];
+		for (i in 0...keys)
+			arr.push(keys + 'k_note_' + (i + 1));
+		return arr;
+	}
 
 	private function generateSong():Void
 	{
+		Song.updateManiaKeys(SONG);
+		totalColumns = Note.maniaKeys;
+		setOnScripts('mania', Note.maniaKeys);
+		keysArray = getKeysArray(Note.maniaKeys);
 		// FlxG.log.add(ChartParser.parse());
 		songSpeed = PlayState.SONG.speed;
 		songSpeedType = ClientPrefs.getGameplaySetting('scrolltype');
@@ -1655,7 +1666,8 @@ class PlayState extends MusicBeatState
 	{
 		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
 		var strumLineY:Float = ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50;
-		for (i in 0...4)
+		final keys:Int = Note.maniaKeys;
+		for (i in 0...keys)
 		{
 			// FlxG.log.add(i);
 			var targetAlpha:Float = 1;
@@ -1682,7 +1694,7 @@ class PlayState extends MusicBeatState
 				if(ClientPrefs.data.middleScroll)
 				{
 					babyArrow.x += 310;
-					if(i > 1) { //Up and Right
+					if(i > Std.int(keys / 2) - 1) {
 						babyArrow.x += FlxG.width / 2 + 25;
 					}
 				}
@@ -4185,4 +4197,3 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			FlxG.signals.preUpdate.add(checkForResync);
 	}
 }
-
