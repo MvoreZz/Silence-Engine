@@ -355,17 +355,18 @@ class ClientPrefs {
 		return new Map<String, Array<Array<FlxColor>>>();
 	}
 
-	public static function getRGBColor(player:Int = 0):Array<Array<FlxColor>>
+	// No Note import here (circular with objects.Note). Optional mania map by key count string e.g. "6k".
+	public static function getRGBColor(?player:Int = 0, ?keys:Int = 4):Array<Array<FlxColor>>
 	{
-		if (Note.maniaKeys != 4 && data.arrowRGBMap != null && data.arrowRGBMap.exists(Note.maniaKeys + 'k'))
-			return data.arrowRGBMap.get(Note.maniaKeys + 'k');
+		if (keys != 4 && data.arrowRGBMap != null && data.arrowRGBMap.exists(keys + 'k'))
+			return data.arrowRGBMap.get(keys + 'k');
 		return data.arrowRGB;
 	}
 
-	public static function getRGBPixelColor(player:Int = 0):Array<Array<FlxColor>>
+	public static function getRGBPixelColor(?player:Int = 0, ?keys:Int = 4):Array<Array<FlxColor>>
 	{
-		if (Note.maniaKeys != 4 && data.arrowRGBPixelMap != null && data.arrowRGBPixelMap.exists(Note.maniaKeys + 'k'))
-			return data.arrowRGBPixelMap.get(Note.maniaKeys + 'k');
+		if (keys != 4 && data.arrowRGBPixelMap != null && data.arrowRGBPixelMap.exists(keys + 'k'))
+			return data.arrowRGBPixelMap.get(keys + 'k');
 		return data.arrowRGBPixel;
 	}
 
