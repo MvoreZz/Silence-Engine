@@ -3272,7 +3272,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			var postfix:String = '';
 			if(note != null) postfix = note.animSuffix;
 
-			var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, direction)))] + 'miss' + postfix;
+			var animToPlay:String = singAnimations[Std.int(Math.abs(direction) % singAnimations.length)] + 'miss' + postfix;
 			char.playAnim(animToPlay, true);
 
 			if(char != gf && lastCombo > 5 && gf != null && gf.hasAnimation('sad'))
@@ -3303,7 +3303,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		else if(!note.noAnimation)
 		{
 			var char:Character = opponentMode ? boyfriend : dad;
-			var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
+			var animToPlay:String = singAnimations[Std.int(Math.abs(note.noteData) % singAnimations.length)] + note.animSuffix;
 			if(note.gfNote) char = gf;
 
 			if(char != null)
@@ -3358,7 +3358,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		{
 			if(!note.noAnimation)
 			{
-				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
+				var animToPlay:String = singAnimations[Std.int(Math.abs(note.noteData) % singAnimations.length)] + note.animSuffix;
 
 				var char:Character = opponentMode ? dad : boyfriend;
 				var animCheck:String = 'hey';
@@ -3843,13 +3843,10 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	}
 
 	function strumPlayAnim(isDad:Bool, id:Int, time:Float) {
-		var spr:StrumNote = null;
-		if(isDad) {
-			spr = opponentStrums.members[id];
-		} else {
-			spr = playerStrums.members[id];
-		}
-
+		var group = isDad ? opponentStrums : playerStrums;
+		if (group == null || group.members == null || group.members.length < 1) return;
+		var safeId:Int = Std.int(Math.abs(id)) % group.members.length;
+		var spr:StrumNote = group.members[safeId];
 		if(spr != null) {
 			spr.playAnim('confirm', true);
 			spr.resetAnim = time;
