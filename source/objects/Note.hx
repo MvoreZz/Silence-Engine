@@ -329,6 +329,14 @@ class Note extends FlxSprite
 			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
 			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
 			texture = '';
+			defaultRGB();
+			if (colorForData(noteData) == 'odd')
+			{
+				// Yellow center key (Psych Online-style odd)
+				rgbShader.r = 0xFFFFEE00;
+				rgbShader.g = 0xFFFFFFFF;
+				rgbShader.b = 0xFF665500;
+			}
 
 			x += getLaneWidth() * noteData;
 			if(!isSustainNote) {
