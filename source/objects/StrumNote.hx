@@ -17,6 +17,14 @@ class StrumNote extends FlxSprite
 	
 	public var texture(default, set):String = null;
 	private function set_texture(value:String):String {
+		if (value != null && Note.colorForData(noteData) == 'odd' && value.indexOf('_ODD') < 0)
+		{
+			var oddVal:String = value + '_ODD';
+			if (Paths.fileExists('images/' + oddVal + '.png', IMAGE))
+				value = oddVal;
+			else if (Paths.fileExists('images/' + Note.defaultNoteSkin + '_ODD.png', IMAGE))
+				value = Note.defaultNoteSkin + '_ODD';
+		}
 		if(texture != value) {
 			texture = value;
 			reloadNote();
@@ -59,6 +67,15 @@ class StrumNote extends FlxSprite
 
 		var customSkin:String = skin + Note.getNoteSkinPostfix();
 		if(Paths.fileExists('images/$customSkin.png', IMAGE)) skin = customSkin;
+
+		if (Note.colorForData(leData) == 'odd')
+		{
+			var oddSkin:String = Note.defaultNoteSkin + '_ODD';
+			if (Paths.fileExists('images/' + oddSkin + '.png', IMAGE))
+				skin = oddSkin;
+			else if (skin.indexOf('_ODD') < 0 && Paths.fileExists('images/' + skin + '_ODD.png', IMAGE))
+				skin = skin + '_ODD';
+		}
 
 		texture = skin; //Load texture and anims
 		scrollFactor.set();
