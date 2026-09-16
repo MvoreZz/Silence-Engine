@@ -243,19 +243,14 @@ class Note extends FlxSprite
 	public function defaultRGB()
 	{
 		var rgbList:Array<Array<FlxColor>> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel : ClientPrefs.data.arrowRGB;
-		var arr:Array<FlxColor> = (rgbList != null && rgbList.length > 0) ? rgbList[noteData % rgbList.length] : null;
-
-		if (arr != null && noteData > -1 && noteData <= arr.length)
+		if (rgbList == null || rgbList.length < 1 || noteData < 0)
+			return;
+		var arr:Array<FlxColor> = rgbList[Std.int(Math.abs(noteData)) % rgbList.length];
+		if (arr != null && arr.length >= 3)
 		{
 			rgbShader.r = arr[0];
 			rgbShader.g = arr[1];
 			rgbShader.b = arr[2];
-		}
-		else
-		{
-			rgbShader.r = 0xFFFF0000;
-			rgbShader.g = 0xFF00FF00;
-			rgbShader.b = 0xFF0000FF;
 		}
 	}
 
@@ -401,14 +396,13 @@ class Note extends FlxSprite
 
 	public static function initializeGlobalRGBShader(noteData:Int)
 	{
-		if(globalRgbShaders[noteData] == null)
+		var rgbList = (!PlayState.isPixelStage) ? ClientPrefs.data.arrowRGB : ClientPrefs.data.arrowRGBPixel;
+		var idx:Int = (rgbList != null && rgbList.length > 0) ? (Std.int(Math.abs(noteData)) % rgbList.length) : 0;
+		if(globalRgbShaders[idx] == null)
 		{
 			var newRGB:RGBPalette = new RGBPalette();
-			var rgbList = (!PlayState.isPixelStage) ? ClientPrefs.data.arrowRGB : ClientPrefs.data.arrowRGBPixel;
-			var idx:Int = noteData % (rgbList != null && rgbList.length > 0 ? rgbList.length : 4);
 			var arr:Array<FlxColor> = (rgbList != null && rgbList.length > 0) ? rgbList[idx] : null;
-			
-			if (arr != null && noteData > -1)
+			if (arr != null && arr.length >= 3)
 			{
 				newRGB.r = arr[0];
 				newRGB.g = arr[1];
@@ -416,15 +410,13 @@ class Note extends FlxSprite
 			}
 			else
 			{
-				// Fallback to left-arrow colors instead of solid red error look
 				newRGB.r = 0xFFC24B99;
 				newRGB.g = 0xFFFFFFFF;
 				newRGB.b = 0xFF3C1B62;
 			}
-			
-			globalRgbShaders[noteData] = newRGB;
+			globalRgbShaders[idx] = newRGB;
 		}
-		return globalRgbShaders[noteData];
+		return globalRgbShaders[idx];
 	}
 
 	var _lastNoteOffX:Float = 0;
