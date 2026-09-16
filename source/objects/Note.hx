@@ -146,11 +146,19 @@ class Note extends FlxSprite
 	}
 
 	public static function getNoteScale():Float {
-		return (swagWidth * 4) / (swagWidth * Math.max(4, maniaKeys)) * (1 + (0.1 * (Math.min(9, Math.max(4, maniaKeys)) - 4)));
+		// Original note graphic scale (always 0.7). Lane spacing is separate.
+		return 0.7;
+	}
+
+	public static function getLaneWidth():Float {
+		if (maniaKeys <= 4)
+			return swagWidth;
+		// Slightly tighter lanes so extra keys fit; graphics stay 0.7
+		return swagWidth * (4.0 / maniaKeys);
 	}
 
 	public static function getNoteOffsetX():Float {
-		return (swagWidth * getNoteScale() / 30.0) * (Math.min(9, Math.max(4, maniaKeys)) - 4);
+		return 0;
 	}
 
 	public static function colToIndex(col:String):Int {
@@ -327,7 +335,7 @@ class Note extends FlxSprite
 			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
 			texture = '';
 
-			x += swagWidth * getNoteScale() / 0.7 * noteData;
+			x += getLaneWidth() * noteData;
 			if(!isSustainNote && noteData < colArray.length) { //Doing this 'if' check to fix the warnings on Senpai songs
 				var animToPlay:String = '';
 				animToPlay = colArray[noteData % colArray.length];
