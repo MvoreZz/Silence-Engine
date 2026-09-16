@@ -1441,9 +1441,11 @@ class PlayState extends MusicBeatState
 				if (Math.isNaN(holdLength))
 					holdLength = 0.0;
 
-				var gottaHitNote:Bool = section.mustHitSection;
-				if (songNotes[1] >= totalColumns)
-					gottaHitNote = !section.mustHitSection;
+				// Psych 1.0 chart rule: data 0..keys-1 = mustHit side, data keys.. = other side
+				var rawData:Int = Std.int(songNotes[1]);
+				var gottaHitNote:Bool = (section.mustHitSection == true);
+				if (rawData >= totalColumns)
+					gottaHitNote = !gottaHitNote;
 
 				if (i != 0) {
 					// CLEAR ANY POSSIBLE GHOST NOTES
@@ -2993,7 +2995,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 		// obtain notes that the player can hit
 		var plrInputNotes:Array<Note> = notes.members.filter(function(n:Note):Bool {
-			var canHit:Bool = n != null && !strumsBlocked[n.noteData] && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit;
+			if (n == null) return false;
+			var blockedNote:Bool = (n.noteData >= 0 && n.noteData < strumsBlocked.length) ? (strumsBlocked[n.noteData] == true) : false;
+			var canHit:Bool = !blockedNote && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit;
 			return canHit && !n.isSustainNote && n.noteData == key;
 		});
 		plrInputNotes.sort(sortHitNotes);
@@ -3032,8 +3036,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		//more accurate hit time for the ratings? part 2 (Now that the calculations are done, go back to the time it was before for not causing a note stutter)
 		Conductor.songPosition = lastTime;
 
-		var spr:StrumNote = playerStrums.members[key];
-		if(strumsBlocked[key] != true && spr != null && spr.animation.curAnim.name != 'confirm')
+		var spr:StrumNote = (playerStrums != null && key >= 0 && key < playerStrums.length) ? playerStrums.members[key] : null;
+		var blocked:Bool = (key >= 0 && key < strumsBlocked.length) ? (strumsBlocked[key] == true) : false;
+		if(!blocked && spr != null && spr.animation != null && spr.animation.curAnim != null && spr.animation.curAnim.name != 'confirm')
 		{
 			spr.playAnim('pressed');
 			spr.resetAnim = 0;
@@ -3091,10 +3096,17 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function onButtonPress(button:TouchButton):Void
 	{
-		if (button.IDs.filter(id -> id.toString().startsWith("EXTRA")).length > 0)
+		if (button == null || button.IDs == null || button.IDs.length < 1)
+			return;
+		if (button.IDs.filter(id -> id != null && id.toString().startsWith("EXTRA")).length > 0)
 			return;
 
-		var buttonCode:Int = (button.IDs[0].toString().startsWith('NOTE')) ? button.IDs[0] : button.IDs[1];
+		var id0 = button.IDs[0];
+		var id1 = button.IDs.length > 1 ? button.IDs[1] : id0;
+		if (id0 == null) return;
+		var buttonCode:Int = (id0.toString().startsWith('NOTE')) ? id0 : id1;
+		if (buttonCode < 0 || buttonCode >= playerStrums.length)
+			return;
 		callOnScripts('onButtonPressPre', [buttonCode]);
 		if (button.justPressed) keyPressed(buttonCode);
 		callOnScripts('onButtonPress', [buttonCode]);
@@ -3102,10 +3114,15 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function onButtonRelease(button:TouchButton):Void
 	{
-		if (button.IDs.filter(id -> id.toString().startsWith("EXTRA")).length > 0)
+		if (button == null || button.IDs == null || button.IDs.length < 1)
+			return;
+		if (button.IDs.filter(id -> id != null && id.toString().startsWith("EXTRA")).length > 0)
 			return;
 
-		var buttonCode:Int = (button.IDs[0].toString().startsWith('NOTE')) ? button.IDs[0] : button.IDs[1];
+		var id0 = button.IDs[0];
+		var id1 = button.IDs.length > 1 ? button.IDs[1] : id0;
+		if (id0 == null) return;
+		var buttonCode:Int = (id0.toString().startsWith('NOTE')) ? id0 : id1;
 		callOnScripts('onButtonReleasePre', [buttonCode]);
 		if(buttonCode > -1) keyReleased(buttonCode);
 		callOnScripts('onButtonRelease', [buttonCode]);
@@ -3472,17 +3489,31 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	public function spawnNoteSplash(x:Float = 0, y:Float = 0, ?data:Int = 0, ?note:Note, ?strum:StrumNote) {
 		var splash:NoteSplash = grpNoteSplashes.recycle(NoteSplash);
+		if (splash.animation != null)
+			splash.animation.finishCallback = null;
 		splash.alpha = 1;
 		splash.visible = true;
 		splash.babyArrow = strum;
-		splash.spawnSplashNote(x, y, data % 4, note);
+		var d:Int = Std.int(Math.abs(data)) % 4;
+		splash.spawnSplashNote(x, y, d, note);
+		// Force despawn — extra-key/odd often never fires finishCallback
 		if (splash.animation != null)
 		{
 			splash.animation.finishCallback = function(_) {
+				splash.animation.finishCallback = null;
 				splash.kill();
 			};
 		}
-		grpNoteSplashes.add(splash);
+		new FlxTimer().start(0.3, function(_) {
+			if (splash != null)
+			{
+				if (splash.animation != null)
+					splash.animation.finishCallback = null;
+				splash.kill();
+			}
+		});
+		if (grpNoteSplashes.members.indexOf(splash) < 0)
+			grpNoteSplashes.add(splash);
 	}
 
 	override function destroy() {
