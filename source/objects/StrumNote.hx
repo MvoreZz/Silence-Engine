@@ -101,7 +101,7 @@ class StrumNote extends FlxSprite
 			animation.add('red', [7]);
 			animation.add('blue', [5]);
 			animation.add('purple', [4]);
-			switch (Math.abs(noteData) % 4)
+			switch (directionIndex())
 			{
 				case 0:
 					animation.add('static', [0]);
@@ -132,7 +132,7 @@ class StrumNote extends FlxSprite
 			antialiasing = ClientPrefs.data.antialiasing;
 			setGraphicSize(Std.int(width * 0.7));
 
-			switch (Math.abs(noteData) % 4)
+			switch (directionIndex())
 			{
 				case 0:
 					animation.addByPrefix('static', 'arrowLEFT');
@@ -158,6 +158,20 @@ class StrumNote extends FlxSprite
 		{
 			playAnim(lastAnim, true);
 		}
+	}
+
+
+	/** 0 left, 1 down, 2 up, 3 right — matches note column colors (odd -> center uses up graphic on default skin) */
+	function directionIndex():Int {
+		var col:String = Note.colorForData(noteData);
+		return switch (col) {
+			case 'purple': 0;
+			case 'blue': 1;
+			case 'green': 2;
+			case 'red': 3;
+			case 'odd': 2; // center key
+			default: Std.int(Math.abs(noteData) % 4);
+		};
 	}
 
 	public function playerPosition()
