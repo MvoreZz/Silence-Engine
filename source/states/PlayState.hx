@@ -1441,7 +1441,9 @@ class PlayState extends MusicBeatState
 				if (Math.isNaN(holdLength))
 					holdLength = 0.0;
 
-				var gottaHitNote:Bool = (songNotes[1] < totalColumns);
+				var gottaHitNote:Bool = section.mustHitSection;
+				if (songNotes[1] >= totalColumns)
+					gottaHitNote = !section.mustHitSection;
 
 				if (i != 0) {
 					// CLEAR ANY POSSIBLE GHOST NOTES
@@ -3447,10 +3449,16 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	}
 
 	public function spawnNoteSplashOnNote(note:Note) {
-		if(note != null) {
-			var strum:StrumNote = playerStrums.members[note.noteData];
-			if(strum != null)
-				spawnNoteSplash(strum.x, strum.y, note.noteData, note, strum);
+		if(note == null) return;
+		var group = note.mustPress ? playerStrums : opponentStrums;
+		if (group == null || group.members.length < 1) return;
+		var idx:Int = Std.int(Math.abs(note.noteData)) % group.members.length;
+		var strum:StrumNote = group.members[idx];
+		if(strum != null)
+		{
+			// Splash skins are 4-direction; map extra keys onto L/D/U/R
+			var splashData:Int = Std.int(Math.abs(note.noteData) % 4);
+			spawnNoteSplash(strum.x, strum.y, splashData, note, strum);
 		}
 	}
 
