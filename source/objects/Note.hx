@@ -336,9 +336,11 @@ class Note extends FlxSprite
 			texture = '';
 
 			x += getLaneWidth() * noteData;
-			if(!isSustainNote && noteData < colArray.length) { //Doing this 'if' check to fix the warnings on Senpai songs
-				var animToPlay:String = '';
-				animToPlay = colArray[noteData % colArray.length];
+			if(!isSustainNote) {
+				var animToPlay:String = colorForData(noteData);
+				final dirs:Array<String> = ['purple', 'blue', 'green', 'red'];
+				if (!animation.exists(animToPlay + 'Scroll'))
+					animToPlay = dirs[Std.int(Math.abs(noteData)) % 4];
 				animation.play(animToPlay + 'Scroll');
 			}
 		}
@@ -358,7 +360,7 @@ class Note extends FlxSprite
 			offsetX += width / 2;
 			copyAngle = false;
 
-			animation.play(colArray[noteData % colArray.length] + 'holdend');
+			animation.play(colorForData(noteData) + 'holdend');
 
 			updateHitbox();
 
@@ -369,7 +371,7 @@ class Note extends FlxSprite
 
 			if (prevNote.isSustainNote)
 			{
-				prevNote.animation.play(colArray[prevNote.noteData % colArray.length] + 'hold');
+				prevNote.animation.play(colorForData(prevNote.noteData) + 'hold');
 
 				prevNote.scale.y *= Conductor.stepCrochet / 100 * 1.05;
 				if(createdFrom != null && createdFrom.songSpeed != null) prevNote.scale.y *= createdFrom.songSpeed;
@@ -414,9 +416,10 @@ class Note extends FlxSprite
 			}
 			else
 			{
-				newRGB.r = 0xFFFF0000;
-				newRGB.g = 0xFF00FF00;
-				newRGB.b = 0xFF0000FF;
+				// Fallback to left-arrow colors instead of solid red error look
+				newRGB.r = 0xFFC24B99;
+				newRGB.g = 0xFFFFFFFF;
+				newRGB.b = 0xFF3C1B62;
 			}
 			
 			globalRgbShaders[noteData] = newRGB;
@@ -438,6 +441,20 @@ class Note extends FlxSprite
 			skin = PlayState.SONG != null ? PlayState.SONG.arrowSkin : null;
 			if(skin == null || skin.length < 1)
 				skin = defaultNoteSkin + postfix;
+		}
+
+		// Odd / center-key lanes use NOTE_assets_ODD when present (Psych Online style)
+		if (colorForData(noteData) == 'odd')
+		{
+			var oddSkin:String = defaultNoteSkin + '_ODD';
+			if (Paths.fileExists('images/' + oddSkin + '.png', IMAGE))
+				skin = oddSkin;
+			else if (skin.indexOf('_ODD') < 0)
+			{
+				var alt:String = skin + '_ODD';
+				if (Paths.fileExists('images/' + alt + '.png', IMAGE))
+					skin = alt;
+			}
 		}
 		else rgbShader.enabled = false;
 
@@ -504,19 +521,47 @@ class Note extends FlxSprite
 	}
 
 	function loadNoteAnims() {
-		if (colArray[noteData] == null)
-			return;
+		colArray = getColArrayFromKeys();
+		final dirs:Array<String> = ['purple', 'blue', 'green', 'red'];
+		final extras:Array<String> = ['odd', 'white', 'yellow', 'violet', 'black', 'dark', 'space', 'void'];
+		final allCols:Array<String> = dirs.concat(extras);
+
+		attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true);
+
+		for (c in allCols)
+		{
+			animation.addByPrefix(c + 'Scroll', c + '0');
+			animation.addByPrefix(c + 'holdend', c + ' hold end', 24, true);
+			animation.addByPrefix(c + 'hold', c + ' hold piece', 24, true);
+		}
+
+		var col:String = dirs[Std.int(Math.abs(noteData)) % 4];
+		if (colArray != null && colArray.length > 0)
+		{
+			var wanted:String = colArray[Std.int(Math.abs(noteData)) % colArray.length];
+			if (wanted != null && wanted.length > 0)
+			{
+				if (animation.exists(wanted + 'Scroll'))
+					col = wanted;
+			}
+		}
 
 		if (isSustainNote)
 		{
-			attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true); // this fixes some retarded typo from the original note .FLA
-			animation.addByPrefix(colArray[noteData] + 'holdend', colArray[noteData] + ' hold end', 24, true);
-			animation.addByPrefix(colArray[noteData] + 'hold', colArray[noteData] + ' hold piece', 24, true);
+			animation.addByPrefix(col + 'holdend', col + ' hold end', 24, true);
+			animation.addByPrefix(col + 'hold', col + ' hold piece', 24, true);
 		}
-		else animation.addByPrefix(colArray[noteData] + 'Scroll', colArray[noteData] + '0');
 
 		setGraphicSize(Std.int(width * 0.7));
 		updateHitbox();
+	}
+
+	public static function colorForData(noteData:Int):String {
+		colArray = getColArrayFromKeys();
+		final dirs:Array<String> = ['purple', 'blue', 'green', 'red'];
+		if (colArray == null || colArray.length < 1)
+			return dirs[Std.int(Math.abs(noteData)) % 4];
+		return colArray[Std.int(Math.abs(noteData)) % colArray.length];
 	}
 
 	function loadPixelNoteAnims() {
