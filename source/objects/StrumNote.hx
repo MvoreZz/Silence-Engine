@@ -113,7 +113,7 @@ class StrumNote extends FlxSprite
 			animation.addByPrefix('red', 'arrowRIGHT');
 
 			antialiasing = ClientPrefs.data.antialiasing;
-			setGraphicSize(Std.int(width * Note.getNoteScale()));
+			setGraphicSize(Std.int(width * 0.7));
 
 			switch (Math.abs(noteData) % 4)
 			{
@@ -145,20 +145,20 @@ class StrumNote extends FlxSprite
 
 	public function playerPosition()
 	{
-		final scaleMult:Float = Note.getNoteScale() / 0.7;
-		final laneW:Float = Note.swagWidth * scaleMult;
-		final gap:Float = Note.getNoteOffsetX();
-		x += (laneW - gap) * noteData;
+		final laneW:Float = Note.getLaneWidth();
 		x += 50;
 		x += ((FlxG.width / 2) * player);
 
-		// Center this player's group when more than 4 keys
 		if (Note.maniaKeys > 4)
 		{
-			final totalW:Float = laneW * Note.maniaKeys - gap * (Note.maniaKeys - 1);
+			final totalW:Float = laneW * Note.maniaKeys;
 			final sideW:Float = FlxG.width / 2;
 			final startX:Float = (sideW - totalW) / 2 + (player == 1 ? sideW : 0);
-			x = startX + (laneW - gap) * noteData;
+			x = startX + laneW * noteData;
+		}
+		else
+		{
+			x += laneW * noteData;
 		}
 	}
 
