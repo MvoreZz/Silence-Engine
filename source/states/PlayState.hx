@@ -3456,16 +3456,32 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		var strum:StrumNote = group.members[idx];
 		if(strum != null)
 		{
-			// Splash skins are 4-direction; map extra keys onto L/D/U/R
-			var splashData:Int = Std.int(Math.abs(note.noteData) % 4);
+			// Map to 4-dir splash frames using color lane (odd -> up/center)
+			var col:String = Note.colorForData(note.noteData);
+			var splashData:Int = switch (col) {
+				case 'purple': 0;
+				case 'blue': 1;
+				case 'green': 2;
+				case 'red': 3;
+				case 'odd': 2;
+				default: Std.int(Math.abs(note.noteData) % 4);
+			};
 			spawnNoteSplash(strum.x, strum.y, splashData, note, strum);
 		}
 	}
 
 	public function spawnNoteSplash(x:Float = 0, y:Float = 0, ?data:Int = 0, ?note:Note, ?strum:StrumNote) {
 		var splash:NoteSplash = grpNoteSplashes.recycle(NoteSplash);
+		splash.alpha = 1;
+		splash.visible = true;
 		splash.babyArrow = strum;
-		splash.spawnSplashNote(x, y, data, note);
+		splash.spawnSplashNote(x, y, data % 4, note);
+		if (splash.animation != null)
+		{
+			splash.animation.finishCallback = function(_) {
+				splash.kill();
+			};
+		}
 		grpNoteSplashes.add(splash);
 	}
 
