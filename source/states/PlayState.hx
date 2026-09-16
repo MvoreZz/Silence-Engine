@@ -1516,7 +1516,7 @@ class PlayState extends MusicBeatState
 						else if(ClientPrefs.data.middleScroll)
 						{
 							sustainNote.x += 310;
-							if(noteColumn > 1) //Up and Right
+							if(noteColumn > Std.int(totalColumns / 2) - 1)
 								sustainNote.x += FlxG.width / 2 + 25;
 						}
 					}
