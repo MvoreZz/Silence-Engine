@@ -1359,6 +1359,38 @@ class PlayState extends MusicBeatState
 	private function generateSong():Void
 	{
 		Song.updateManiaKeys(SONG);
+		// Infer key count from chart if needed (fixes mixed sides when maniaKeys wrong)
+		var maxRaw:Int = 0;
+		if (SONG != null && SONG.notes != null)
+		{
+			for (sec in SONG.notes)
+			{
+				if (sec == null || sec.sectionNotes == null) continue;
+				for (sn in sec.sectionNotes)
+				{
+					if (sn == null) continue;
+					var d:Int = Std.int(sn[1]);
+					if (d > maxRaw) maxRaw = d;
+				}
+			}
+		}
+		// Both sides: data goes 0..(keys*2-1). One side only: 0..(keys-1).
+		var inferred:Int = Note.maniaKeys;
+		if (maxRaw >= 0)
+		{
+			if (maxRaw <= 3) inferred = 4;
+			else if (maxRaw <= 7) inferred = 4;
+			else
+			{
+				// e.g. max 11 -> 6k, max 17 -> 9k
+				inferred = Std.int(Math.floor(maxRaw / 2)) + 1;
+				if (inferred < 4) inferred = 4;
+				if (inferred > 9 && Note.maniaKeysList.contains(inferred) == false)
+					inferred = Note.maniaKeys;
+			}
+		}
+		if (inferred != Note.maniaKeys && Note.maniaKeysList.contains(inferred))
+			Note.maniaKeys = inferred;
 		totalColumns = Note.maniaKeys;
 		setOnScripts('mania', Note.maniaKeys);
 		keysArray = getKeysArray(Note.maniaKeys);
@@ -1470,9 +1502,10 @@ class PlayState extends MusicBeatState
 				var isAlt: Bool = section.altAnim && !gottaHitNote;
 				swagNote.gfNote = (section.gfSection && gottaHitNote == section.mustHitSection);
 				swagNote.animSuffix = isAlt ? "-alt" : "";
-				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
 				swagNote.sustainLength = holdLength;
 				swagNote.noteType = noteType;
+				// Set mustPress AFTER noteType (some types touch flags)
+				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
 	
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
@@ -4094,7 +4127,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (note.tail.length <= 1)
 			return;
 
-		var strum:StrumNote = (note.mustPress ? playerStrums : opponentStrums).members[note.noteData];
+		var group = note.mustPress ? playerStrums : opponentStrums;
+		if (group == null || group.members.length < 1)
+			return;
+		var idx:Int = Std.int(Math.abs(note.noteData)) % group.members.length;
+		var strum:StrumNote = group.members[idx];
 		if (strum == null)
 			return;
 
