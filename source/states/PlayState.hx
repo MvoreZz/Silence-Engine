@@ -316,7 +316,7 @@ class PlayState extends MusicBeatState
 		instakillOnMiss = ClientPrefs.getGameplaySetting('instakill');
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
-		opponentMode = ClientPrefs.getGameplaySetting('opponentplay');
+		opponentMode = (ClientPrefs.getGameplaySetting('opponentplay') == true);
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
 
 		// var gameCam:FlxCamera = FlxG.camera;
@@ -1359,7 +1359,6 @@ class PlayState extends MusicBeatState
 	private function generateSong():Void
 	{
 		Song.updateManiaKeys(SONG);
-		// Infer key count from chart if needed (fixes mixed sides when maniaKeys wrong)
 		var maxRaw:Int = 0;
 		if (SONG != null && SONG.notes != null)
 		{
@@ -1374,23 +1373,18 @@ class PlayState extends MusicBeatState
 				}
 			}
 		}
-		// Both sides: data goes 0..(keys*2-1). One side only: 0..(keys-1).
-		var inferred:Int = Note.maniaKeys;
-		if (maxRaw >= 0)
+		// 4K charts use note data 0-7. If max is <= 7, force 4K (fixes wrong mania field).
+		// Higher max keeps Song.updateManiaKeys / keyCount result, or infer.
+		if (maxRaw <= 7)
+			Note.maniaKeys = 4;
+		else
 		{
-			if (maxRaw <= 3) inferred = 4;
-			else if (maxRaw <= 7) inferred = 4;
-			else
-			{
-				// e.g. max 11 -> 6k, max 17 -> 9k
-				inferred = Std.int(Math.floor(maxRaw / 2)) + 1;
-				if (inferred < 4) inferred = 4;
-				if (inferred > 9 && Note.maniaKeysList.contains(inferred) == false)
-					inferred = Note.maniaKeys;
-			}
+			var inferred:Int = Std.int(Math.floor(maxRaw / 2)) + 1;
+			if (Note.maniaKeysList.contains(inferred))
+				Note.maniaKeys = inferred;
+			else if (SONG.keyCount != null && Note.maniaKeysList.contains(SONG.keyCount))
+				Note.maniaKeys = SONG.keyCount;
 		}
-		if (inferred != Note.maniaKeys && Note.maniaKeysList.contains(inferred))
-			Note.maniaKeys = inferred;
 		totalColumns = Note.maniaKeys;
 		setOnScripts('mania', Note.maniaKeys);
 		keysArray = getKeysArray(Note.maniaKeys);
