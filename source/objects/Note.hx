@@ -243,9 +243,10 @@ class Note extends FlxSprite
 	public function defaultRGB()
 	{
 		var rgbList:Array<Array<FlxColor>> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel : ClientPrefs.data.arrowRGB;
-		if (rgbList == null || rgbList.length < 1 || noteData < 0)
+		if (rgbList == null || rgbList.length < 1 || noteData < 0 || rgbShader == null)
 			return;
-		var arr:Array<FlxColor> = rgbList[Std.int(Math.abs(noteData)) % rgbList.length];
+		var idx:Int = Std.int(Math.abs(noteData)) % Std.int(Math.min(4, rgbList.length));
+		var arr:Array<FlxColor> = rgbList[idx];
 		if (arr != null && arr.length >= 3)
 		{
 			rgbShader.r = arr[0];
@@ -326,18 +327,16 @@ class Note extends FlxSprite
 
 		if(noteData > -1)
 		{
-			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
+			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(Std.int(Math.abs(noteData)) % 4));
 			texture = '';
 			defaultRGB();
-			// Stock RGB palette was tinting every multi-key note solid red — use skin colors
-			rgbShader.enabled = false;
+			// Stock Psych: RGB on unless song disables it
+			rgbShader.enabled = true;
 			if (colorForData(noteData) == 'odd')
 			{
-				// Optional yellow tint only for center/odd lane
 				rgbShader.r = 0xFFFFEE00;
 				rgbShader.g = 0xFFFFFFFF;
 				rgbShader.b = 0xFF665500;
-				rgbShader.enabled = true;
 			}
 			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB)
 				rgbShader.enabled = false;
