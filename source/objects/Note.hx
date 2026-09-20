@@ -327,16 +327,20 @@ class Note extends FlxSprite
 		if(noteData > -1)
 		{
 			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
-			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
 			texture = '';
 			defaultRGB();
+			// Stock RGB palette was tinting every multi-key note solid red — use skin colors
+			rgbShader.enabled = false;
 			if (colorForData(noteData) == 'odd')
 			{
-				// Yellow center key (Psych Online-style odd)
+				// Optional yellow tint only for center/odd lane
 				rgbShader.r = 0xFFFFEE00;
 				rgbShader.g = 0xFFFFFFFF;
 				rgbShader.b = 0xFF665500;
+				rgbShader.enabled = true;
 			}
+			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB)
+				rgbShader.enabled = false;
 
 			x += getLaneWidth() * noteData;
 			if(!isSustainNote) {
