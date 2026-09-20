@@ -3098,12 +3098,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	{
 		if (button == null || button.IDs == null || button.IDs.length < 1)
 			return;
-		if (button.IDs.filter(id -> id != null && id.toString().startsWith("EXTRA")).length > 0)
+		if (button.IDs.filter(id -> id.toString().startsWith("EXTRA")).length > 0)
 			return;
 
 		var id0 = button.IDs[0];
 		var id1 = button.IDs.length > 1 ? button.IDs[1] : id0;
-		if (id0 == null) return;
 		var buttonCode:Int = (id0.toString().startsWith('NOTE')) ? id0 : id1;
 		if (buttonCode < 0 || buttonCode >= playerStrums.length)
 			return;
@@ -3116,12 +3115,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	{
 		if (button == null || button.IDs == null || button.IDs.length < 1)
 			return;
-		if (button.IDs.filter(id -> id != null && id.toString().startsWith("EXTRA")).length > 0)
+		if (button.IDs.filter(id -> id.toString().startsWith("EXTRA")).length > 0)
 			return;
 
 		var id0 = button.IDs[0];
 		var id1 = button.IDs.length > 1 ? button.IDs[1] : id0;
-		if (id0 == null) return;
 		var buttonCode:Int = (id0.toString().startsWith('NOTE')) ? id0 : id1;
 		callOnScripts('onButtonReleasePre', [buttonCode]);
 		if(buttonCode > -1) keyReleased(buttonCode);
