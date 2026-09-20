@@ -176,21 +176,20 @@ class StrumNote extends FlxSprite
 
 	public function playerPosition()
 	{
-		final laneW:Float = Note.getLaneWidth();
-		x += 50;
-		x += ((FlxG.width / 2) * player);
+		// Classic Psych 4K placement (fixes scattered strums on some mods)
+		if (Note.maniaKeys <= 4)
+		{
+			x += Note.swagWidth * noteData;
+			x += 50;
+			x += ((FlxG.width / 2) * player);
+			return;
+		}
 
-		if (Note.maniaKeys > 4)
-		{
-			final totalW:Float = laneW * Note.maniaKeys;
-			final sideW:Float = FlxG.width / 2;
-			final startX:Float = (sideW - totalW) / 2 + (player == 1 ? sideW : 0);
-			x = startX + laneW * noteData;
-		}
-		else
-		{
-			x += laneW * noteData;
-		}
+		final laneW:Float = Note.getLaneWidth();
+		final totalW:Float = laneW * Note.maniaKeys;
+		final sideW:Float = FlxG.width / 2;
+		final startX:Float = (sideW - totalW) / 2 + (player == 1 ? sideW : 0);
+		x = startX + laneW * noteData;
 	}
 
 	override function update(elapsed:Float) {
