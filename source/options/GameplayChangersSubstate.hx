@@ -1,5 +1,9 @@
 package options;
 
+import backend.Song;
+import objects.Note;
+import states.PlayState;
+
 import objects.AttachedText;
 import objects.CheckboxThingie;
 
@@ -70,6 +74,14 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 		optionsArray.push(new GameplayOption('Practice Mode', 'practice', BOOL, false));
 		optionsArray.push(new GameplayOption('Botplay', 'botplay', BOOL, false));
 		optionsArray.push(new GameplayOption('Play Opponent', 'opponentplay', BOOL, false));
+
+		// Psych Online-style: (Chart) reads chart and shows real key count (mania:8 -> 9K)
+		// Full key list (not only 9K): 1K..9K, 10K, 12K, 20K, ...
+		var maniaChoices:Array<String> = ['(Chart)'];
+		for (k in Note.maniaKeysList)
+			maniaChoices.push(k + 'K');
+		var maniaOpt:GameplayOption = new GameplayOption('Mania', 'mania', STRING, '(Chart)', maniaChoices);
+		optionsArray.push(maniaOpt);
 	}
 
 	public function getOptionByName(name:String)
@@ -321,6 +333,17 @@ class GameplayChangersSubstate extends MusicBeatSubstate
 	function updateTextFrom(option:GameplayOption) {
 		var text:String = option.displayFormat;
 		var val:Dynamic = option.getValue();
+
+		// Mania (Chart): show resolved key count from the loaded chart (Psych Online style)
+		if (option.type == STRING && val == '(Chart)')
+		{
+			if (PlayState.SONG != null)
+				option.text = Song.getManiaDisplay(PlayState.SONG) + ' (Chart)';
+			else
+				option.text = '(Chart)';
+			return;
+		}
+
 		if(option.type == PERCENT) val *= 100;
 		var def:Dynamic = option.defaultValue;
 		option.text = text.replace('%v', val).replace('%d', def);
