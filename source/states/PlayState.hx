@@ -1358,7 +1358,10 @@ class PlayState extends MusicBeatState
 
 	private function generateSong():Void
 	{
+		// 1) Mania from chart field (mania:8 -> 9K on this engine)
 		Song.updateManiaKeys(SONG);
+
+		// 2) Scan chart note data range
 		var maxRaw:Int = 0;
 		if (SONG != null && SONG.notes != null)
 		{
@@ -1373,18 +1376,43 @@ class PlayState extends MusicBeatState
 				}
 			}
 		}
-		// 4K charts use note data 0-7. If max is <= 7, force 4K (fixes wrong mania field).
-		// Higher max keeps Song.updateManiaKeys / keyCount result, or infer.
+
+		// 3) Resolve keys: 4K if data only 0-7; else prefer chart mania, else infer from max
 		if (maxRaw <= 7)
+		{
 			Note.maniaKeys = 4;
+		}
 		else
 		{
 			var inferred:Int = Std.int(Math.floor(maxRaw / 2)) + 1;
-			if (Note.maniaKeysList.contains(inferred))
+			if (SONG != null && SONG.mania != null)
+			{
+				// Andromeda/Kade-style: mania 8 = 9 keys (see God Eater chart)
+				var fromMania:Int = Song.updateManiaKeys(SONG, true);
+				if (fromMania >= 4 && fromMania <= 9)
+					Note.maniaKeys = fromMania;
+				else if (Note.maniaKeysList.contains(inferred))
+					Note.maniaKeys = inferred;
+			}
+			else if (Note.maniaKeysList.contains(inferred))
+			{
 				Note.maniaKeys = inferred;
-			else if (SONG.keyCount != null && Note.maniaKeysList.contains(SONG.keyCount))
-				Note.maniaKeys = SONG.keyCount;
+			}
+			// Ensure we can address every note column (0..maxRaw)
+			if (Note.maniaKeys * 2 - 1 < maxRaw && Note.maniaKeysList.contains(inferred))
+				Note.maniaKeys = inferred;
 		}
+
+		// Game Modifiers: Mania override (Psych Online: "(Chart)" = use resolved chart keys)
+		var maniaMod:Dynamic = ClientPrefs.getGameplaySetting('mania', '(Chart)');
+		if (maniaMod != null && Std.string(maniaMod) != '(Chart)')
+		{
+			var modStr:String = Std.string(maniaMod).toUpperCase().replace('K', '').trim();
+			var modKeys:Int = Std.parseInt(modStr);
+			if (modKeys != null && Note.maniaKeysList.contains(modKeys))
+				Note.maniaKeys = modKeys;
+		}
+
 		totalColumns = Note.maniaKeys;
 		setOnScripts('mania', Note.maniaKeys);
 		keysArray = getKeysArray(Note.maniaKeys);
