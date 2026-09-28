@@ -1407,8 +1407,8 @@ class PlayState extends MusicBeatState
 		var maniaMod:Dynamic = ClientPrefs.getGameplaySetting('mania', '(Chart)');
 		if (maniaMod != null && Std.string(maniaMod) != '(Chart)')
 		{
-			var modStr:String = Std.string(maniaMod).toUpperCase().replace('K', '').trim();
-			var modKeys:Int = Std.parseInt(modStr);
+			var modStr:String = Std.string(maniaMod).toUpperCase().split('K')[0].trim();
+			var modKeys:Null<Int> = Std.parseInt(modStr);
 			if (modKeys != null && Note.maniaKeysList.contains(modKeys))
 				Note.maniaKeys = modKeys;
 		}
