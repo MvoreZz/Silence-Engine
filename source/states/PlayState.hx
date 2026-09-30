@@ -304,8 +304,12 @@ class PlayState extends MusicBeatState
 		PauseSubState.songName = null; //Reset to default
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
 
-		Song.updateManiaKeys(SONG);
-		keysArray = getKeysArray(Note.maniaKeys);
+		keysArray = [
+			'note_left',
+			'note_down',
+			'note_up',
+			'note_right'
+		];
 
 		if(FlxG.sound.music != null)
 			FlxG.sound.music.stop();
@@ -316,7 +320,7 @@ class PlayState extends MusicBeatState
 		instakillOnMiss = ClientPrefs.getGameplaySetting('instakill');
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
-		opponentMode = (ClientPrefs.getGameplaySetting('opponentplay') == true);
+		opponentMode = ClientPrefs.getGameplaySetting('opponentplay');
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
 
 		// var gameCam:FlxCamera = FlxG.camera;
@@ -1343,79 +1347,10 @@ class PlayState extends MusicBeatState
 
 	private var noteTypes:Array<String> = [];
 	private var eventsPushed:Array<String> = [];
-	private var totalColumns: Int = 4; // set from Note.maniaKeys in generateSong
-
-	
-	function getKeysArray(keys:Int):Array<String>
-	{
-		if (keys == 4)
-			return ['note_left', 'note_down', 'note_up', 'note_right'];
-		var arr:Array<String> = [];
-		for (i in 0...keys)
-			arr.push(keys + 'k_note_' + (i + 1));
-		return arr;
-	}
+	private var totalColumns: Int = 4;
 
 	private function generateSong():Void
 	{
-		// 1) Mania from chart field (mania:8 -> 9K on this engine)
-		Song.updateManiaKeys(SONG);
-
-		// 2) Scan chart note data range
-		var maxRaw:Int = 0;
-		if (SONG != null && SONG.notes != null)
-		{
-			for (sec in SONG.notes)
-			{
-				if (sec == null || sec.sectionNotes == null) continue;
-				for (sn in sec.sectionNotes)
-				{
-					if (sn == null) continue;
-					var d:Int = Std.int(sn[1]);
-					if (d > maxRaw) maxRaw = d;
-				}
-			}
-		}
-
-		// 3) Resolve keys: 4K if data only 0-7; else prefer chart mania, else infer from max
-		if (maxRaw <= 7)
-		{
-			Note.maniaKeys = 4;
-		}
-		else
-		{
-			var inferred:Int = Std.int(Math.floor(maxRaw / 2)) + 1;
-			if (SONG != null && SONG.mania != null)
-			{
-				// Andromeda/Kade-style: mania 8 = 9 keys (see God Eater chart)
-				var fromMania:Int = Song.updateManiaKeys(SONG, true);
-				if (fromMania >= 4 && fromMania <= 9)
-					Note.maniaKeys = fromMania;
-				else if (Note.maniaKeysList.contains(inferred))
-					Note.maniaKeys = inferred;
-			}
-			else if (Note.maniaKeysList.contains(inferred))
-			{
-				Note.maniaKeys = inferred;
-			}
-			// Ensure we can address every note column (0..maxRaw)
-			if (Note.maniaKeys * 2 - 1 < maxRaw && Note.maniaKeysList.contains(inferred))
-				Note.maniaKeys = inferred;
-		}
-
-		// Game Modifiers: Mania override (Psych Online: "(Chart)" = use resolved chart keys)
-		var maniaMod:Dynamic = ClientPrefs.getGameplaySetting('mania', '(Chart)');
-		if (maniaMod != null && Std.string(maniaMod) != '(Chart)')
-		{
-			var modStr:String = Std.string(maniaMod).toUpperCase().split('K')[0].trim();
-			var modKeys:Null<Int> = Std.parseInt(modStr);
-			if (modKeys != null && Note.maniaKeysList.contains(modKeys))
-				Note.maniaKeys = modKeys;
-		}
-
-		totalColumns = Note.maniaKeys;
-		setOnScripts('mania', Note.maniaKeys);
-		keysArray = getKeysArray(Note.maniaKeys);
 		// FlxG.log.add(ChartParser.parse());
 		songSpeed = PlayState.SONG.speed;
 		songSpeedType = ClientPrefs.getGameplaySetting('scrolltype');
@@ -1495,11 +1430,7 @@ class PlayState extends MusicBeatState
 				if (Math.isNaN(holdLength))
 					holdLength = 0.0;
 
-				// Psych 1.0 chart rule: data 0..keys-1 = mustHit side, data keys.. = other side
-				var rawData:Int = Std.int(songNotes[1]);
-				var gottaHitNote:Bool = (section.mustHitSection == true);
-				if (rawData >= totalColumns)
-					gottaHitNote = !gottaHitNote;
+				var gottaHitNote:Bool = (songNotes[1] < totalColumns);
 
 				if (i != 0) {
 					// CLEAR ANY POSSIBLE GHOST NOTES
@@ -1524,10 +1455,9 @@ class PlayState extends MusicBeatState
 				var isAlt: Bool = section.altAnim && !gottaHitNote;
 				swagNote.gfNote = (section.gfSection && gottaHitNote == section.mustHitSection);
 				swagNote.animSuffix = isAlt ? "-alt" : "";
+				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
 				swagNote.sustainLength = holdLength;
 				swagNote.noteType = noteType;
-				// Set mustPress AFTER noteType (some types touch flags)
-				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
 	
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
@@ -1573,7 +1503,7 @@ class PlayState extends MusicBeatState
 						else if(ClientPrefs.data.middleScroll)
 						{
 							sustainNote.x += 310;
-							if(noteColumn > Std.int(totalColumns / 2) - 1)
+							if(noteColumn > 1) //Up and Right
 								sustainNote.x += FlxG.width / 2 + 25;
 						}
 					}
@@ -1725,8 +1655,7 @@ class PlayState extends MusicBeatState
 	{
 		var strumLineX:Float = ClientPrefs.data.middleScroll ? STRUM_X_MIDDLESCROLL : STRUM_X;
 		var strumLineY:Float = ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50;
-		final keys:Int = Note.maniaKeys;
-		for (i in 0...keys)
+		for (i in 0...4)
 		{
 			// FlxG.log.add(i);
 			var targetAlpha:Float = 1;
@@ -1753,7 +1682,7 @@ class PlayState extends MusicBeatState
 				if(ClientPrefs.data.middleScroll)
 				{
 					babyArrow.x += 310;
-					if(i > Std.int(keys / 2) - 1) {
+					if(i > 1) { //Up and Right
 						babyArrow.x += FlxG.width / 2 + 25;
 					}
 				}
@@ -3050,9 +2979,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 		// obtain notes that the player can hit
 		var plrInputNotes:Array<Note> = notes.members.filter(function(n:Note):Bool {
-			if (n == null) return false;
-			var blockedNote:Bool = (n.noteData >= 0 && n.noteData < strumsBlocked.length) ? (strumsBlocked[n.noteData] == true) : false;
-			var canHit:Bool = !blockedNote && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit;
+			var canHit:Bool = n != null && !strumsBlocked[n.noteData] && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit;
 			return canHit && !n.isSustainNote && n.noteData == key;
 		});
 		plrInputNotes.sort(sortHitNotes);
@@ -3091,9 +3018,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		//more accurate hit time for the ratings? part 2 (Now that the calculations are done, go back to the time it was before for not causing a note stutter)
 		Conductor.songPosition = lastTime;
 
-		var spr:StrumNote = (playerStrums != null && key >= 0 && key < playerStrums.length) ? playerStrums.members[key] : null;
-		var blocked:Bool = (key >= 0 && key < strumsBlocked.length) ? (strumsBlocked[key] == true) : false;
-		if(!blocked && spr != null && spr.animation != null && spr.animation.curAnim != null && spr.animation.curAnim.name != 'confirm')
+		var spr:StrumNote = playerStrums.members[key];
+		if(strumsBlocked[key] != true && spr != null && spr.animation.curAnim.name != 'confirm')
 		{
 			spr.playAnim('pressed');
 			spr.resetAnim = 0;
@@ -3151,16 +3077,10 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function onButtonPress(button:TouchButton):Void
 	{
-		if (button == null || button.IDs == null || button.IDs.length < 1)
-			return;
 		if (button.IDs.filter(id -> id.toString().startsWith("EXTRA")).length > 0)
 			return;
 
-		var id0 = button.IDs[0];
-		var id1 = button.IDs.length > 1 ? button.IDs[1] : id0;
-		var buttonCode:Int = (id0.toString().startsWith('NOTE')) ? id0 : id1;
-		if (buttonCode < 0 || buttonCode >= playerStrums.length)
-			return;
+		var buttonCode:Int = (button.IDs[0].toString().startsWith('NOTE')) ? button.IDs[0] : button.IDs[1];
 		callOnScripts('onButtonPressPre', [buttonCode]);
 		if (button.justPressed) keyPressed(buttonCode);
 		callOnScripts('onButtonPress', [buttonCode]);
@@ -3168,14 +3088,10 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function onButtonRelease(button:TouchButton):Void
 	{
-		if (button == null || button.IDs == null || button.IDs.length < 1)
-			return;
 		if (button.IDs.filter(id -> id.toString().startsWith("EXTRA")).length > 0)
 			return;
 
-		var id0 = button.IDs[0];
-		var id1 = button.IDs.length > 1 ? button.IDs[1] : id0;
-		var buttonCode:Int = (id0.toString().startsWith('NOTE')) ? id0 : id1;
+		var buttonCode:Int = (button.IDs[0].toString().startsWith('NOTE')) ? button.IDs[0] : button.IDs[1];
 		callOnScripts('onButtonReleasePre', [buttonCode]);
 		if(buttonCode > -1) keyReleased(buttonCode);
 		callOnScripts('onButtonRelease', [buttonCode]);
@@ -3344,7 +3260,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			var postfix:String = '';
 			if(note != null) postfix = note.animSuffix;
 
-			var animToPlay:String = singAnimations[Std.int(Math.abs(direction) % singAnimations.length)] + 'miss' + postfix;
+			var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, direction)))] + 'miss' + postfix;
 			char.playAnim(animToPlay, true);
 
 			if(char != gf && lastCombo > 5 && gf != null && gf.hasAnimation('sad'))
@@ -3375,7 +3291,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		else if(!note.noAnimation)
 		{
 			var char:Character = opponentMode ? boyfriend : dad;
-			var animToPlay:String = singAnimations[Std.int(Math.abs(note.noteData) % singAnimations.length)] + note.animSuffix;
+			var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 			if(note.gfNote) char = gf;
 
 			if(char != null)
@@ -3430,7 +3346,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		{
 			if(!note.noAnimation)
 			{
-				var animToPlay:String = singAnimations[Std.int(Math.abs(note.noteData) % singAnimations.length)] + note.animSuffix;
+				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 
 				var char:Character = opponentMode ? dad : boyfriend;
 				var animCheck:String = 'hey';
@@ -3519,54 +3435,18 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	}
 
 	public function spawnNoteSplashOnNote(note:Note) {
-		if(note == null) return;
-		var group = note.mustPress ? playerStrums : opponentStrums;
-		if (group == null || group.members.length < 1) return;
-		var idx:Int = Std.int(Math.abs(note.noteData)) % group.members.length;
-		var strum:StrumNote = group.members[idx];
-		if(strum != null)
-		{
-			// Map to 4-dir splash frames using color lane (odd -> up/center)
-			var col:String = Note.colorForData(note.noteData);
-			var splashData:Int = switch (col) {
-				case 'purple': 0;
-				case 'blue': 1;
-				case 'green': 2;
-				case 'red': 3;
-				case 'odd': 2;
-				default: Std.int(Math.abs(note.noteData) % 4);
-			};
-			spawnNoteSplash(strum.x, strum.y, splashData, note, strum);
+		if(note != null) {
+			var strum:StrumNote = playerStrums.members[note.noteData];
+			if(strum != null)
+				spawnNoteSplash(strum.x, strum.y, note.noteData, note, strum);
 		}
 	}
 
 	public function spawnNoteSplash(x:Float = 0, y:Float = 0, ?data:Int = 0, ?note:Note, ?strum:StrumNote) {
 		var splash:NoteSplash = grpNoteSplashes.recycle(NoteSplash);
-		if (splash.animation != null)
-			splash.animation.finishCallback = null;
-		splash.alpha = 1;
-		splash.visible = true;
 		splash.babyArrow = strum;
-		var d:Int = Std.int(Math.abs(data)) % 4;
-		splash.spawnSplashNote(x, y, d, note);
-		// Force despawn — extra-key/odd often never fires finishCallback
-		if (splash.animation != null)
-		{
-			splash.animation.finishCallback = function(_) {
-				splash.animation.finishCallback = null;
-				splash.kill();
-			};
-		}
-		new FlxTimer().start(0.3, function(_) {
-			if (splash != null)
-			{
-				if (splash.animation != null)
-					splash.animation.finishCallback = null;
-				splash.kill();
-			}
-		});
-		if (grpNoteSplashes.members.indexOf(splash) < 0)
-			grpNoteSplashes.add(splash);
+		splash.spawnSplashNote(x, y, data, note);
+		grpNoteSplashes.add(splash);
 	}
 
 	override function destroy() {
@@ -3951,10 +3831,13 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	}
 
 	function strumPlayAnim(isDad:Bool, id:Int, time:Float) {
-		var group = isDad ? opponentStrums : playerStrums;
-		if (group == null || group.members == null || group.members.length < 1) return;
-		var safeId:Int = Std.int(Math.abs(id)) % group.members.length;
-		var spr:StrumNote = group.members[safeId];
+		var spr:StrumNote = null;
+		if(isDad) {
+			spr = opponentStrums.members[id];
+		} else {
+			spr = playerStrums.members[id];
+		}
+
 		if(spr != null) {
 			spr.playAnim('confirm', true);
 			spr.resetAnim = time;
@@ -4149,11 +4032,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (note.tail.length <= 1)
 			return;
 
-		var group = note.mustPress ? playerStrums : opponentStrums;
-		if (group == null || group.members.length < 1)
-			return;
-		var idx:Int = Std.int(Math.abs(note.noteData)) % group.members.length;
-		var strum:StrumNote = group.members[idx];
+		var strum:StrumNote = (note.mustPress ? playerStrums : opponentStrums).members[note.noteData];
 		if (strum == null)
 			return;
 
@@ -4306,3 +4185,4 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			FlxG.signals.preUpdate.add(checkForResync);
 	}
 }
+
