@@ -30,8 +30,6 @@ typedef SwagSong =
 
 	@:optional var arrowSkin:String;
 	@:optional var splashSkin:String;
-	@:optional var mania:Null<Int>;
-	@:optional var keyCount:Null<Int>;
 }
 
 typedef SwagSection =
@@ -65,70 +63,6 @@ class Song
 	public var player2:String = 'dad';
 	public var gfVersion:String = 'gf';
 	public var format:String = 'psych_v1';
-
-	
-	/**
-	 * Resolves chart key count (Psych Online logic).
-	 * - keyCount field: used as-is
-	 * - mania field (legacy):
-	 *   psych_v1 / splashSkin: keys = mania + 1  (mania 8 -> 9K)
-	 *   else Andromeda map: 0->4, 4->5, 1/5/6->6, 2/7->7, 3/8->9
-	 */
-	public static function updateManiaKeys(songData:SwagSong, ?noUpdate:Bool = false):Int
-	{
-		if (songData == null)
-			return noUpdate ? 4 : (Note.maniaKeys = 4);
-
-		var keys:Null<Int> = null;
-
-		if (songData.keyCount != null && songData.keyCount >= 1)
-			keys = songData.keyCount;
-		else if (songData.mania != null)
-		{
-			var fmt:String = songData.format != null ? songData.format : '';
-			if (fmt.startsWith('psych_v1') || songData.splashSkin != null)
-				keys = songData.mania + 1;
-			else
-			{
-				switch (songData.mania)
-				{
-					case 0: keys = 4;
-					case 4: keys = 5;
-					case 1, 5, 6: keys = 6;
-					case 2, 7: keys = 7;
-					case 3, 8: keys = 9;
-					default: keys = songData.mania >= 1 ? songData.mania : 4;
-				}
-			}
-		}
-
-		if (keys == null || keys < 1) keys = 4;
-		if (keys > 61) keys = 4;
-		if (noUpdate) return keys;
-		return Note.maniaKeys = keys;
-	}
-
-	/** Resolved key count for display (reads chart mania/keyCount like Psych Online). */
-	public static function getManiaDisplay(songData:SwagSong):String
-	{
-		if (songData == null)
-			return '4K';
-		var keys:Int = updateManiaKeys(songData, true);
-		return keys + 'K';
-	}
-
-	/** Longer label: e.g. "9K (chart mania: 8)" */
-	public static function getManiaDisplayDetailed(songData:SwagSong):String
-	{
-		if (songData == null)
-			return '4K';
-		var keys:Int = updateManiaKeys(songData, true);
-		if (songData.keyCount != null)
-			return keys + 'K';
-		if (songData.mania != null)
-			return keys + 'K (chart mania: ' + songData.mania + ')';
-		return keys + 'K';
-	}
 
 	public static function convert(songJson:Dynamic) // Convert old charts to psych_v1 format
 	{
@@ -249,4 +183,4 @@ class Song
 		}
 		return songJson;
 	}
-			}
+}

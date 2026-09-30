@@ -53,10 +53,6 @@ import states.TitleState;
 		[0xFF71E300, 0xFFF6FFE6, 0xFF003100],
 		[0xFFFF884E, 0xFFFFFAF5, 0xFF6C0000]];
 
-	public var arrowRGBMap:Map<String, Array<Array<FlxColor>>> = ClientPrefs.genArrowColorsExtraMap();
-	public var arrowRGBPixelMap:Map<String, Array<Array<FlxColor>>> = ClientPrefs.genArrowColorsExtraMap(true);
-
-
 	public var ghostTapping:Bool = true;
 	public var timeBarType:String = 'Time Left';
 	public var scoreZoom:Bool = true;
@@ -68,8 +64,6 @@ import states.TitleState;
 	public var comboStacking:Bool = true;
 	public var legacyMainMenu:Bool = false;
 	public var gameplaySettings:Map<String, Dynamic> = [
-		'mania' => '(Chart)',
-		'scrollspeedbymania' => false,
 		'scrollspeed' => 1.0,
 		'scrolltype' => 'multiplicative', 
 		// anyone reading this, amod is multiplicative speed mod, cmod is constant speed mod, and xmod is bpm based speed mod.
@@ -114,41 +108,6 @@ class ClientPrefs {
 		'note_left'		=> [A, LEFT],
 		'note_down'		=> [S, DOWN],
 		'note_right'	=> [D, RIGHT],
-				'5k_note_1'    	=> [D],
-				'5k_note_2'    	=> [F],
-				'5k_note_3'    	=> [G, SPACE],
-				'5k_note_4'     => [J],
-				'5k_note_5'     => [K],
-				'6k_note_1'     => [S],
-				'6k_note_2'     => [D],
-				'6k_note_3'     => [F],
-				'6k_note_4'     => [J],
-				'6k_note_5'     => [K],
-				'6k_note_6'     => [L],
-				'7k_note_1'     => [S],
-				'7k_note_2'     => [D],
-				'7k_note_3'     => [F],
-				'7k_note_4'     => [G, SPACE],
-				'7k_note_5'     => [J],
-				'7k_note_6'     => [K],
-				'7k_note_7'     => [L],
-				'8k_note_1'     => [A],
-				'8k_note_2'     => [S],
-				'8k_note_3'     => [D],
-				'8k_note_4'     => [F],
-				'8k_note_5'     => [H],
-				'8k_note_6'     => [J],
-				'8k_note_7'     => [K],
-				'8k_note_8'     => [L],
-				'9k_note_1'     => [A],
-				'9k_note_2'     => [S],
-				'9k_note_3'     => [D],
-				'9k_note_4'     => [F],
-				'9k_note_5'     => [G, SPACE],
-				'9k_note_6'     => [H],
-				'9k_note_7'     => [J],
-				'9k_note_8'     => [K],
-				'9k_note_9'     => [L],
 		
 		'ui_up'			=> [W, UP],
 		'ui_left'		=> [A, LEFT],
@@ -349,25 +308,4 @@ class ClientPrefs {
 		FlxG.sound.volumeDownKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeDownKeys : emptyArray;
 		FlxG.sound.volumeUpKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeUpKeys : emptyArray;
 	}
-
-	public static function genArrowColorsExtraMap(?pixel:Bool = false):Map<String, Array<Array<FlxColor>>>
-	{
-		return new Map<String, Array<Array<FlxColor>>>();
-	}
-
-	// No Note import here (circular with objects.Note). Optional mania map by key count string e.g. "6k".
-	public static function getRGBColor(?player:Int = 0, ?keys:Int = 4):Array<Array<FlxColor>>
-	{
-		if (keys != 4 && data.arrowRGBMap != null && data.arrowRGBMap.exists(keys + 'k'))
-			return data.arrowRGBMap.get(keys + 'k');
-		return data.arrowRGB;
-	}
-
-	public static function getRGBPixelColor(?player:Int = 0, ?keys:Int = 4):Array<Array<FlxColor>>
-	{
-		if (keys != 4 && data.arrowRGBPixelMap != null && data.arrowRGBPixelMap.exists(keys + 'k'))
-			return data.arrowRGBPixelMap.get(keys + 'k');
-		return data.arrowRGBPixel;
-	}
-
 }
