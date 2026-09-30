@@ -17,14 +17,6 @@ class StrumNote extends FlxSprite
 	
 	public var texture(default, set):String = null;
 	private function set_texture(value:String):String {
-		if (value != null && Note.colorForData(noteData) == 'odd' && value.indexOf('_ODD') < 0)
-		{
-			var oddVal:String = value + '_ODD';
-			if (Paths.fileExists('images/' + oddVal + '.png', IMAGE))
-				value = oddVal;
-			else if (Paths.fileExists('images/' + Note.defaultNoteSkin + '_ODD.png', IMAGE))
-				value = Note.defaultNoteSkin + '_ODD';
-		}
 		if(texture != value) {
 			texture = value;
 			reloadNote();
@@ -40,18 +32,16 @@ class StrumNote extends FlxSprite
 		rgbShader.enabled = false;
 		if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) useRGBShader = false;
 		
-		var rgbList:Array<Array<FlxColor>> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel : ClientPrefs.data.arrowRGB;
-		if (rgbList != null && rgbList.length > 0)
+		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[leData];
+		if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[leData];
+		
+		if(leData <= arr.length)
 		{
-			var arr:Array<FlxColor> = rgbList[leData % rgbList.length];
-			if (arr != null && arr.length >= 3)
+			@:bypassAccessor
 			{
-				@:bypassAccessor
-				{
-					rgbShader.r = arr[0];
-					rgbShader.g = arr[1];
-					rgbShader.b = arr[2];
-				}
+				rgbShader.r = arr[0];
+				rgbShader.g = arr[1];
+				rgbShader.b = arr[2];
 			}
 		}
 
@@ -67,15 +57,6 @@ class StrumNote extends FlxSprite
 
 		var customSkin:String = skin + Note.getNoteSkinPostfix();
 		if(Paths.fileExists('images/$customSkin.png', IMAGE)) skin = customSkin;
-
-		if (Note.colorForData(leData) == 'odd')
-		{
-			var oddSkin:String = Note.defaultNoteSkin + '_ODD';
-			if (Paths.fileExists('images/' + oddSkin + '.png', IMAGE))
-				skin = oddSkin;
-			else if (skin.indexOf('_ODD') < 0 && Paths.fileExists('images/' + skin + '_ODD.png', IMAGE))
-				skin = skin + '_ODD';
-		}
 
 		texture = skin; //Load texture and anims
 		scrollFactor.set();
@@ -101,7 +82,7 @@ class StrumNote extends FlxSprite
 			animation.add('red', [7]);
 			animation.add('blue', [5]);
 			animation.add('purple', [4]);
-			switch (directionIndex())
+			switch (Math.abs(noteData) % 4)
 			{
 				case 0:
 					animation.add('static', [0]);
@@ -132,7 +113,7 @@ class StrumNote extends FlxSprite
 			antialiasing = ClientPrefs.data.antialiasing;
 			setGraphicSize(Std.int(width * 0.7));
 
-			switch (directionIndex())
+			switch (Math.abs(noteData) % 4)
 			{
 				case 0:
 					animation.addByPrefix('static', 'arrowLEFT');
@@ -160,36 +141,11 @@ class StrumNote extends FlxSprite
 		}
 	}
 
-
-	/** 0 left, 1 down, 2 up, 3 right — matches note column colors (odd -> center uses up graphic on default skin) */
-	function directionIndex():Int {
-		var col:String = Note.colorForData(noteData);
-		return switch (col) {
-			case 'purple': 0;
-			case 'blue': 1;
-			case 'green': 2;
-			case 'red': 3;
-			case 'odd': 2; // center key
-			default: Std.int(Math.abs(noteData) % 4);
-		};
-	}
-
 	public function playerPosition()
 	{
-		// Classic Psych 4K placement (fixes scattered strums on some mods)
-		if (Note.maniaKeys <= 4)
-		{
-			x += Note.swagWidth * noteData;
-			x += 50;
-			x += ((FlxG.width / 2) * player);
-			return;
-		}
-
-		final laneW:Float = Note.getLaneWidth();
-		final totalW:Float = laneW * Note.maniaKeys;
-		final sideW:Float = FlxG.width / 2;
-		final startX:Float = (sideW - totalW) / 2 + (player == 1 ? sideW : 0);
-		x = startX + laneW * noteData;
+		x += Note.swagWidth * noteData;
+		x += 50;
+		x += ((FlxG.width / 2) * player);
 	}
 
 	override function update(elapsed:Float) {

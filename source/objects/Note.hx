@@ -93,78 +93,9 @@ class Note extends FlxSprite
 	public var lateHitMult:Float = 1;
 	public var lowPriority:Bool = false;
 
-	public static var rankedManiaKeysList:Array<Int> = [4, 5, 6, 7, 8, 9];
-	public static var maniaKeysList:Array<Int> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 20, 21, 26, 50, 55, 61];
-	public static var maniaKeysStringList:Array<String> = [for (keys in maniaKeysList) keys + 'k'];
-	public static var maniaKeys(default, set):Int = 4;
-	static function set_maniaKeys(v:Int):Int {
-		maniaKeys = maniaKeysList.contains(v) ? v : 4;
-		colArray = getColArrayFromKeys();
-		return maniaKeys;
-	}
-
 	public static var SUSTAIN_SIZE:Int = 44;
 	public static var swagWidth:Float = 160 * 0.7;
 	public static var colArray:Array<String> = ['purple', 'blue', 'green', 'red'];
-
-	public static function getColArrayFromKeys(?regularOnly:Bool = false, ?keys:Null<Int> = null):Array<String> {
-		if (keys == null) keys = maniaKeys;
-		var specialCol = regularOnly ? 'green' : 'odd';
-		switch (keys) {
-			case 5:
-				return ['purple', 'blue', specialCol, 'green', 'red'];
-			case 6:
-				return ['purple', 'blue', 'red', 'purple', 'green', 'red'];
-			case 7:
-				return ['purple', 'blue', 'red', specialCol, 'purple', 'green', 'red'];
-			case 8:
-				return ['purple', 'blue', 'green', 'red', 'purple', 'blue', 'green', 'red'];
-			case 9:
-				return ['purple', 'blue', 'green', 'red', specialCol, 'purple', 'blue', 'green', 'red'];
-			case 2:
-				return ['purple', 'red'];
-			case 3:
-				return ['purple', specialCol, 'red'];
-			case 4:
-				return ['purple', 'blue', 'green', 'red'];
-			default: {
-				var isOdd:Bool = keys % 2 != 0;
-				var arr:Array<String> = [];
-				var ki:Int = 0;
-				for (key in 0...keys) {
-					if (isOdd && key == Std.int(keys / 2)) {
-						arr.push(specialCol);
-						ki = 0;
-						continue;
-					}
-					arr.push(['purple', 'blue', 'green', 'red'][ki % 4]);
-					ki++;
-				}
-				return arr;
-			}
-		}
-	}
-
-	public static function getNoteScale():Float {
-		// Original note graphic scale (always 0.7). Lane spacing is separate.
-		return 0.7;
-	}
-
-	public static function getLaneWidth():Float {
-		if (maniaKeys <= 4)
-			return swagWidth;
-		// Slightly tighter lanes so extra keys fit; graphics stay 0.7
-		return swagWidth * (4.0 / maniaKeys);
-	}
-
-	public static function getNoteOffsetX():Float {
-		return 0;
-	}
-
-	public static function colToIndex(col:String):Int {
-		if (col == 'odd') return colArray.contains('odd') ? 0 : 1;
-		return ['purple', 'blue', 'green', 'red'].indexOf(col);
-	}
 	public static var defaultNoteSkin(default, never):String = 'noteSkins/NOTE_assets';
 
 	public var noteSplashData:NoteSplashData = {
@@ -242,16 +173,20 @@ class Note extends FlxSprite
 
 	public function defaultRGB()
 	{
-		var rgbList:Array<Array<FlxColor>> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel : ClientPrefs.data.arrowRGB;
-		if (rgbList == null || rgbList.length < 1 || noteData < 0 || rgbShader == null)
-			return;
-		var idx:Int = Std.int(Math.abs(noteData)) % Std.int(Math.min(4, rgbList.length));
-		var arr:Array<FlxColor> = rgbList[idx];
-		if (arr != null && arr.length >= 3)
+		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
+		if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
+
+		if (arr != null && noteData > -1 && noteData <= arr.length)
 		{
 			rgbShader.r = arr[0];
 			rgbShader.g = arr[1];
 			rgbShader.b = arr[2];
+		}
+		else
+		{
+			rgbShader.r = 0xFFFF0000;
+			rgbShader.g = 0xFF00FF00;
+			rgbShader.b = 0xFF0000FF;
 		}
 	}
 
@@ -327,26 +262,14 @@ class Note extends FlxSprite
 
 		if(noteData > -1)
 		{
-			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(Std.int(Math.abs(noteData)) % 4));
+			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
+			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
 			texture = '';
-			defaultRGB();
-			// Stock Psych: RGB on unless song disables it
-			rgbShader.enabled = true;
-			if (colorForData(noteData) == 'odd')
-			{
-				rgbShader.r = 0xFFFFEE00;
-				rgbShader.g = 0xFFFFFFFF;
-				rgbShader.b = 0xFF665500;
-			}
-			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB)
-				rgbShader.enabled = false;
 
-			x += getLaneWidth() * noteData;
-			if(!isSustainNote) {
-				var animToPlay:String = colorForData(noteData);
-				final dirs:Array<String> = ['purple', 'blue', 'green', 'red'];
-				if (!animation.exists(animToPlay + 'Scroll'))
-					animToPlay = dirs[Std.int(Math.abs(noteData)) % 4];
+			x += swagWidth * (noteData);
+			if(!isSustainNote && noteData < colArray.length) { //Doing this 'if' check to fix the warnings on Senpai songs
+				var animToPlay:String = '';
+				animToPlay = colArray[noteData % colArray.length];
 				animation.play(animToPlay + 'Scroll');
 			}
 		}
@@ -366,7 +289,7 @@ class Note extends FlxSprite
 			offsetX += width / 2;
 			copyAngle = false;
 
-			animation.play(colorForData(noteData) + 'holdend');
+			animation.play(colArray[noteData % colArray.length] + 'holdend');
 
 			updateHitbox();
 
@@ -377,7 +300,7 @@ class Note extends FlxSprite
 
 			if (prevNote.isSustainNote)
 			{
-				prevNote.animation.play(colorForData(prevNote.noteData) + 'hold');
+				prevNote.animation.play(colArray[prevNote.noteData % colArray.length] + 'hold');
 
 				prevNote.scale.y *= Conductor.stepCrochet / 100 * 1.05;
 				if(createdFrom != null && createdFrom.songSpeed != null) prevNote.scale.y *= createdFrom.songSpeed;
@@ -407,13 +330,12 @@ class Note extends FlxSprite
 
 	public static function initializeGlobalRGBShader(noteData:Int)
 	{
-		var rgbList = (!PlayState.isPixelStage) ? ClientPrefs.data.arrowRGB : ClientPrefs.data.arrowRGBPixel;
-		var idx:Int = (rgbList != null && rgbList.length > 0) ? (Std.int(Math.abs(noteData)) % rgbList.length) : 0;
-		if(globalRgbShaders[idx] == null)
+		if(globalRgbShaders[noteData] == null)
 		{
 			var newRGB:RGBPalette = new RGBPalette();
-			var arr:Array<FlxColor> = (rgbList != null && rgbList.length > 0) ? rgbList[idx] : null;
-			if (arr != null && arr.length >= 3)
+			var arr:Array<FlxColor> = (!PlayState.isPixelStage) ? ClientPrefs.data.arrowRGB[noteData] : ClientPrefs.data.arrowRGBPixel[noteData];
+			
+			if (arr != null && noteData > -1 && noteData <= arr.length)
 			{
 				newRGB.r = arr[0];
 				newRGB.g = arr[1];
@@ -421,13 +343,14 @@ class Note extends FlxSprite
 			}
 			else
 			{
-				newRGB.r = 0xFFC24B99;
-				newRGB.g = 0xFFFFFFFF;
-				newRGB.b = 0xFF3C1B62;
+				newRGB.r = 0xFFFF0000;
+				newRGB.g = 0xFF00FF00;
+				newRGB.b = 0xFF0000FF;
 			}
-			globalRgbShaders[idx] = newRGB;
+			
+			globalRgbShaders[noteData] = newRGB;
 		}
-		return globalRgbShaders[idx];
+		return globalRgbShaders[noteData];
 	}
 
 	var _lastNoteOffX:Float = 0;
@@ -444,20 +367,6 @@ class Note extends FlxSprite
 			skin = PlayState.SONG != null ? PlayState.SONG.arrowSkin : null;
 			if(skin == null || skin.length < 1)
 				skin = defaultNoteSkin + postfix;
-		}
-
-		// Odd / center-key lanes use NOTE_assets_ODD when present (Psych Online style)
-		if (colorForData(noteData) == 'odd')
-		{
-			var oddSkin:String = defaultNoteSkin + '_ODD';
-			if (Paths.fileExists('images/' + oddSkin + '.png', IMAGE))
-				skin = oddSkin;
-			else if (skin.indexOf('_ODD') < 0)
-			{
-				var alt:String = skin + '_ODD';
-				if (Paths.fileExists('images/' + alt + '.png', IMAGE))
-					skin = alt;
-			}
 		}
 		else rgbShader.enabled = false;
 
@@ -524,47 +433,19 @@ class Note extends FlxSprite
 	}
 
 	function loadNoteAnims() {
-		colArray = getColArrayFromKeys();
-		final dirs:Array<String> = ['purple', 'blue', 'green', 'red'];
-		final extras:Array<String> = ['odd', 'white', 'yellow', 'violet', 'black', 'dark', 'space', 'void'];
-		final allCols:Array<String> = dirs.concat(extras);
-
-		attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true);
-
-		for (c in allCols)
-		{
-			animation.addByPrefix(c + 'Scroll', c + '0');
-			animation.addByPrefix(c + 'holdend', c + ' hold end', 24, true);
-			animation.addByPrefix(c + 'hold', c + ' hold piece', 24, true);
-		}
-
-		var col:String = dirs[Std.int(Math.abs(noteData)) % 4];
-		if (colArray != null && colArray.length > 0)
-		{
-			var wanted:String = colArray[Std.int(Math.abs(noteData)) % colArray.length];
-			if (wanted != null && wanted.length > 0)
-			{
-				if (animation.exists(wanted + 'Scroll'))
-					col = wanted;
-			}
-		}
+		if (colArray[noteData] == null)
+			return;
 
 		if (isSustainNote)
 		{
-			animation.addByPrefix(col + 'holdend', col + ' hold end', 24, true);
-			animation.addByPrefix(col + 'hold', col + ' hold piece', 24, true);
+			attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true); // this fixes some retarded typo from the original note .FLA
+			animation.addByPrefix(colArray[noteData] + 'holdend', colArray[noteData] + ' hold end', 24, true);
+			animation.addByPrefix(colArray[noteData] + 'hold', colArray[noteData] + ' hold piece', 24, true);
 		}
+		else animation.addByPrefix(colArray[noteData] + 'Scroll', colArray[noteData] + '0');
 
 		setGraphicSize(Std.int(width * 0.7));
 		updateHitbox();
-	}
-
-	public static function colorForData(noteData:Int):String {
-		colArray = getColArrayFromKeys();
-		final dirs:Array<String> = ['purple', 'blue', 'green', 'red'];
-		if (colArray == null || colArray.length < 1)
-			return dirs[Std.int(Math.abs(noteData)) % 4];
-		return colArray[Std.int(Math.abs(noteData)) % colArray.length];
 	}
 
 	function loadPixelNoteAnims() {
