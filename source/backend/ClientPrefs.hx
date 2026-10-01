@@ -21,7 +21,7 @@ import states.TitleState;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
 	public var fpsRework:Bool = false;
-	public var smoothHealthBar:Bool = true; // lerp health bar
+	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
 	public var graphicsQuality:String = 'Auto'; // Auto = device analysis; Low/Medium/High/Ultra
 	
@@ -333,14 +333,9 @@ class ClientPrefs {
 		score = 1; // handheld baseline
 		#end
 
-		// Process memory (rough signal; not total RAM)
-		#if sys
-		try {
-			var memMb:Float = lime.system.System.totalMemory / (1024 * 1024);
-			if (memMb >= 800) score += 2;
-			else if (memMb >= 400) score += 1;
-			else if (memMb < 200) score -= 1;
-		} catch (e:Dynamic) {}
+		// No reliable total-RAM API on all targets; use platform + display only
+		#if cpp
+		score += 1;
 		#end
 
 		// Display refresh
