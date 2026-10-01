@@ -21,6 +21,9 @@ import states.TitleState;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
 	public var fpsRework:Bool = false;
+	public var smoothHealthBar:Bool = true; // lerp health bar
+	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
+	public var graphicsQuality:String = 'Auto'; // Auto = device analysis; Low/Medium/High/Ultra
 	
 	public var downScroll:Bool = false;
 	public var middleScroll:Bool = false;
@@ -308,4 +311,93 @@ class ClientPrefs {
 		FlxG.sound.volumeDownKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeDownKeys : emptyArray;
 		FlxG.sound.volumeUpKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeUpKeys : emptyArray;
 	}
+
+	/** Analyze device and return Low / Medium / High / Ultra */
+	public static function analyzeDeviceQuality():String
+	{
+		var score:Int = 0;
+
+		// Desktop is stronger baseline
+		if (!FlxG.onMobile)
+			score += 3;
+		else
+			score += 1;
+
+		#if desktop
+		score += 1;
+		#end
+		#if html5
+		score -= 1;
+		#end
+		#if switch
+		score = 1; // handheld baseline
+		#end
+
+		// Process memory (rough signal; not total RAM)
+		#if sys
+		try {
+			var memMb:Float = lime.system.System.totalMemory / (1024 * 1024);
+			if (memMb >= 800) score += 2;
+			else if (memMb >= 400) score += 1;
+			else if (memMb < 200) score -= 1;
+		} catch (e:Dynamic) {}
+		#end
+
+		// Display refresh
+		try {
+			var rr:Int = FlxG.stage.application.window.displayMode.refreshRate;
+			if (rr >= 120) score += 1;
+			else if (rr > 0 && rr < 50) score -= 1;
+		} catch (e:Dynamic) {}
+
+		if (score >= 6) return 'Ultra';
+		if (score >= 4) return 'High';
+		if (score >= 2) return 'Medium';
+		return 'Low';
+	}
+
+	/** Apply Low/Medium/High/Ultra (or Auto -> analyze) to related prefs */
+	public static function applyGraphicsQuality(?preset:String = null):Void
+	{
+		if (preset == null) preset = data.graphicsQuality;
+		var q:String = preset;
+		if (q == null || q == 'Auto')
+			q = analyzeDeviceQuality();
+
+		switch (q)
+		{
+			case 'Low':
+				data.lowQuality = true;
+				data.antialiasing = false;
+				data.shaders = false;
+				data.cacheOnGPU = false;
+				data.framerate = 60;
+				data.unlimitedFPS = false;
+			case 'Medium':
+				data.lowQuality = false;
+				data.antialiasing = true;
+				data.shaders = false;
+				data.cacheOnGPU = #if switch true #else false #end;
+				data.framerate = 60;
+				data.unlimitedFPS = false;
+			case 'High':
+				data.lowQuality = false;
+				data.antialiasing = true;
+				data.shaders = true;
+				data.cacheOnGPU = true;
+				data.framerate = 120;
+				data.unlimitedFPS = false;
+			case 'Ultra':
+				data.lowQuality = false;
+				data.antialiasing = true;
+				data.shaders = true;
+				data.cacheOnGPU = true;
+				data.framerate = 240;
+				data.unlimitedFPS = false;
+			default:
+				// keep current
+		}
+		data.graphicsQuality = (preset == 'Auto') ? 'Auto' : q;
+	}
+
 }
