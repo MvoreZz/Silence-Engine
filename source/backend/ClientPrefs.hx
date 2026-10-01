@@ -23,7 +23,7 @@ import states.TitleState;
 	public var fpsRework:Bool = false;
 	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
-	public var graphicsQuality:String = 'Medium'; // Low/Medium/High/Ultra/Custom — presets lock related options
+	public var graphicsQuality:String = 'Low'; // set by analyzeDeviceQuality on load unless Custom
 	
 	public var downScroll:Bool = false;
 	public var middleScroll:Bool = false;
@@ -262,6 +262,12 @@ class ClientPrefs {
 			FlxG.sound.volume = FlxG.save.data.volume;
 		if (FlxG.save.data.mute != null)
 			FlxG.sound.muted = FlxG.save.data.mute;
+
+		if (data.graphicsQuality != 'Custom')
+		{
+			data.graphicsQuality = analyzeDeviceQuality();
+			applyGraphicsQuality(data.graphicsQuality);
+		}
 
 		#if DISCORD_ALLOWED DiscordClient.check(); #end
 
