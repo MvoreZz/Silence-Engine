@@ -84,6 +84,18 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 			'hideHud',
 			BOOL);
 		addOption(option);
+
+		var option:Option = new Option('Hide Errors',
+			'If checked, hides on-screen script/debug error text.\nUse this to hide Lua/HScript error spam while playing.',
+			'hideErrors',
+			BOOL);
+		addOption(option);
+
+		var option:Option = new Option('Smooth Health Bar',
+			'If checked, health bar moves smoothly\ninstead of jumping instantly.',
+			'smoothHealthBar',
+			BOOL);
+		addOption(option);
 		
 		var option:Option = new Option('Time Bar:',
 			"What should the Time Bar display?",
