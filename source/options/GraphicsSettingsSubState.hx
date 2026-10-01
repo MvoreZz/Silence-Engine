@@ -18,6 +18,15 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		boyfriend.animation.finishCallback = function (name:String) boyfriend.dance();
 		boyfriend.visible = false;
 
+		// FIRST: device-aware quality preset (analyzes on Auto)
+		var option:Option = new Option('Graphics Quality:',
+			"Low / Medium / High / Ultra presets.\nAuto = analyze this device once and pick a preset.\nChanging this updates Low Quality, Shaders, Anti-Aliasing, GPU Cache and FPS.",
+			'graphicsQuality',
+			STRING,
+			['Auto', 'Low', 'Medium', 'High', 'Ultra']);
+		option.onChange = onChangeGraphicsQuality;
+		addOption(option);
+
 		//I'd suggest using "Low Quality" as an example for making your own option since it is the simplest here
 		var option:Option = new Option('Low Quality', //Name
 			'If checked, disables some background details,\ndecreases loading times and improves performance.', //Description
@@ -75,6 +84,13 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 
 		super();
 		insert(1, boyfriend);
+	}
+
+	function onChangeGraphicsQuality()
+	{
+		ClientPrefs.applyGraphicsQuality(ClientPrefs.data.graphicsQuality);
+		onChangeFramerate();
+		onChangeAntiAliasing();
 	}
 
 	function onChangeAntiAliasing()
