@@ -23,7 +23,7 @@ import states.TitleState;
 	public var fpsRework:Bool = false;
 	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
-	public var graphicsQuality:String = 'Auto'; // Auto = device analysis; Low/Medium/High/Ultra
+	public var graphicsQuality:String = 'Medium'; // Low/Medium/High/Ultra/Custom — presets lock related options
 	
 	public var downScroll:Bool = false;
 	public var middleScroll:Bool = false;
@@ -312,52 +312,114 @@ class ClientPrefs {
 		FlxG.sound.volumeUpKeys = (!Controls.instance.mobileC && turnOn) ? TitleState.volumeUpKeys : emptyArray;
 	}
 
-	/** Analyze device and return Low / Medium / High / Ultra */
+	/** Detect max recommended tier from platform, display, GPU string heuristics. */
 	public static function analyzeDeviceQuality():String
 	{
 		var score:Int = 0;
 
-		// Desktop is stronger baseline
 		if (!FlxG.onMobile)
 			score += 3;
 		else
 			score += 1;
 
 		#if desktop
-		score += 1;
+		score += 2;
 		#end
-		#if html5
-		score -= 1;
-		#end
-		#if switch
-		score = 1; // handheld baseline
-		#end
-
-		// No reliable total-RAM API on all targets; use platform + display only
 		#if cpp
 		score += 1;
 		#end
+		#if html5
+		score -= 2;
+		#end
+		#if switch
+		score = 2;
+		#end
+		#if ios
+		score += 1;
+		#end
 
-		// Display refresh
+		try {
+			var w:Int = FlxG.stage.application.window.width;
+			var h:Int = FlxG.stage.application.window.height;
+			var px:Int = w * h;
+			if (px >= 1920 * 1080) score += 2;
+			else if (px >= 1280 * 720) score += 1;
+			else if (px > 0 && px < 800 * 480) score -= 1;
+		} catch (e:Dynamic) {}
+
 		try {
 			var rr:Int = FlxG.stage.application.window.displayMode.refreshRate;
-			if (rr >= 120) score += 1;
+			if (rr >= 120) score += 2;
+			else if (rr >= 90) score += 1;
 			else if (rr > 0 && rr < 50) score -= 1;
 		} catch (e:Dynamic) {}
 
-		if (score >= 6) return 'Ultra';
-		if (score >= 4) return 'High';
-		if (score >= 2) return 'Medium';
+		try {
+			var gpu:String = '';
+			#if !flash
+			if (FlxG.stage != null && FlxG.stage.context3D != null)
+			{
+				try { gpu = Std.string(Reflect.field(FlxG.stage.context3D, 'driverInfo')); } catch (e2:Dynamic) {}
+			}
+			#end
+			if (gpu == null) gpu = '';
+			gpu = gpu.toLowerCase();
+			if (gpu.indexOf('adreno 3') >= 0 || gpu.indexOf('adreno 4') >= 0 || gpu.indexOf('mali-4') >= 0 || gpu.indexOf('mali-t') >= 0)
+				score -= 1;
+			if (gpu.indexOf('adreno 6') >= 0 || gpu.indexOf('adreno 7') >= 0 || gpu.indexOf('mali-g') >= 0)
+				score += 1;
+			if (gpu.indexOf('nvidia') >= 0 || gpu.indexOf('radeon') >= 0 || gpu.indexOf('geforce') >= 0 || gpu.indexOf('intel iris') >= 0)
+				score += 2;
+		} catch (e:Dynamic) {}
+
+		try {
+			var os:String = openfl.system.Capabilities.os;
+			if (os == null) os = '';
+			os = os.toLowerCase();
+			if (os.indexOf('windows') >= 0 || os.indexOf('mac') >= 0 || os.indexOf('linux') >= 0)
+				score += 1;
+		} catch (e:Dynamic) {}
+
+		if (score >= 8) return 'Ultra';
+		if (score >= 5) return 'High';
+		if (score >= 3) return 'Medium';
 		return 'Low';
 	}
 
-	/** Apply Low/Medium/High/Ultra (or Auto -> analyze) to related prefs */
+	public static function getMaxDeviceQuality():String
+	{
+		return analyzeDeviceQuality();
+	}
+
+	public static function qualityRank(q:String):Int
+	{
+		return switch (q) {
+			case 'Low': 0;
+			case 'Medium': 1;
+			case 'High': 2;
+			case 'Ultra': 3;
+			default: 1;
+		};
+	}
+
+	public static function clampQualityToDevice(q:String):String
+	{
+		if (q == 'Custom') return 'Custom';
+		// Only the analyzed preset is allowed (not lower, not higher)
+		return getMaxDeviceQuality();
+	}
+
 	public static function applyGraphicsQuality(?preset:String = null):Void
 	{
 		if (preset == null) preset = data.graphicsQuality;
-		var q:String = preset;
-		if (q == null || q == 'Auto')
-			q = analyzeDeviceQuality();
+		if (preset == 'Custom')
+		{
+			data.graphicsQuality = 'Custom';
+			return;
+		}
+
+		var q:String = clampQualityToDevice(preset);
+		data.graphicsQuality = q;
 
 		switch (q)
 		{
@@ -373,7 +435,7 @@ class ClientPrefs {
 				data.antialiasing = true;
 				data.shaders = false;
 				data.cacheOnGPU = #if switch true #else false #end;
-				data.framerate = 60;
+				data.framerate = 90;
 				data.unlimitedFPS = false;
 			case 'High':
 				data.lowQuality = false;
@@ -390,9 +452,28 @@ class ClientPrefs {
 				data.framerate = 240;
 				data.unlimitedFPS = false;
 			default:
-				// keep current
 		}
-		data.graphicsQuality = (preset == 'Auto') ? 'Auto' : q;
 	}
+
+	public static function getGraphicsQualityDescription(q:String):String
+	{
+		var maxQ:String = getMaxDeviceQuality();
+		var base:String = switch (q) {
+			case 'Low':
+				'Weak device profile.\nLow Quality ON, no shaders, no AA.\nFPS 60. Other graphics toggles locked unless Custom.';
+			case 'Medium':
+				'Balanced profile.\nAA on, shaders off.\nFPS 90. Other graphics toggles locked unless Custom.';
+			case 'High':
+				'Strong profile.\nShaders + AA + GPU cache.\nFPS 120. Other graphics toggles locked unless Custom.';
+			case 'Ultra':
+				'Maximum profile.\nAll visual options on.\nFPS 240. Other graphics toggles locked unless Custom.';
+			case 'Custom':
+				'Manual control.\nChange Low Quality, Shaders, AA, GPU Cache and FPS freely.';
+			default:
+				'Graphics quality preset.';
+		};
+		return base + '\nDevice max recommended: ' + maxQ + '.';
+	}
+
 
 }
