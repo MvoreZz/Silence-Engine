@@ -322,6 +322,7 @@ class PlayState extends MusicBeatState
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
 		opponentMode = (ClientPrefs.getGameplaySetting('opponentplay') == true);
+		// scripts can read this (Play Opponent only)
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
 
 		// var gameCam:FlxCamera = FlxG.camera;
@@ -535,6 +536,7 @@ class PlayState extends MusicBeatState
 		}
 
 		generateSong();
+		setOnScripts('opponentMode', opponentMode);
 
 		noteGroup.add(grpNoteSplashes);
 		noteGroup.add(grpHoldSplashes);
@@ -768,6 +770,8 @@ class PlayState extends MusicBeatState
 	#end
 
 	public function reloadHealthBarColors() {
+		if (healthBar == null) return;
+		healthBar.leftToRight = opponentMode;
 		if (opponentMode)
 			healthBar.setColors(FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]),
 				FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]));
@@ -1438,18 +1442,33 @@ class PlayState extends MusicBeatState
 			{
 				final songNotes: Array<Dynamic> = section.sectionNotes[i];
 				var spawnTime: Float = songNotes[0];
-				var noteColumn: Int = Std.int(songNotes[1] % totalColumns);
+				var rawData:Int = Std.int(songNotes[1]);
+				var noteColumn: Int = Std.int(Math.abs(rawData) % 4);
 				var holdLength: Float = songNotes[2];
 				var noteType: String = !Std.isOfType(songNotes[3], String) ? Note.defaultNoteTypes[songNotes[3]] : songNotes[3];
 				if (Math.isNaN(holdLength))
 					holdLength = 0.0;
 
-				var gottaHitNote:Bool = (songNotes[1] < totalColumns);
-
+				var gottaHitNote:Bool;
+				var finalMustPress:Bool;
+				if (opponentMode)
+				{
+					// Play Opponent only: section side + data>3, then flip for player-as-dad
+					gottaHitNote = (section.mustHitSection == true);
+					if (rawData > 3)
+						gottaHitNote = !gottaHitNote;
+					finalMustPress = !gottaHitNote;
+				}
+				else
+				{
+					// Normal play — unchanged path
+					gottaHitNote = (songNotes[1] < totalColumns);
+					finalMustPress = gottaHitNote;
+				}
 				if (i != 0) {
 					// CLEAR ANY POSSIBLE GHOST NOTES
 					for (evilNote in unspawnNotes) {
-						var matches: Bool = (noteColumn == evilNote.noteData && gottaHitNote == evilNote.mustPress && evilNote.noteType == noteType);
+						var matches: Bool = (noteColumn == evilNote.noteData && finalMustPress == evilNote.mustPress && evilNote.noteType == noteType);
 						if (matches && Math.abs(spawnTime - evilNote.strumTime) < flixel.math.FlxMath.EPSILON) {
 							if (evilNote.tail.length > 0)
 								for (tail in evilNote.tail)
@@ -1472,7 +1491,7 @@ class PlayState extends MusicBeatState
 				swagNote.sustainLength = holdLength;
 				swagNote.noteType = noteType;
 				// Force after noteType — some types change mustPress in their setter
-				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
+				swagNote.mustPress = finalMustPress;
 
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
@@ -1749,6 +1768,19 @@ class PlayState extends MusicBeatState
 			runSongSyncThread();
 		}
 	}
+
+	override public function destroy()
+	{
+		if (ClientPrefs.data.autoClearCacheAfterMatch)
+		{
+			try {
+				Paths.clearUnusedMemory();
+				Paths.clearStoredMemory();
+			} catch (e:Dynamic) {}
+		}
+		super.destroy();
+	}
+
 
 	#if DISCORD_ALLOWED
 	override public function onFocus():Void
@@ -2595,12 +2627,14 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		}
 
 		var isDad:Bool = (SONG.notes[sec].mustHitSection != true);
-		if (opponentMode) isDad = !isDad;
 		moveCamera(isDad);
 		if (isDad)
 			callOnScripts('onMoveCamera', ['dad']);
 		else
 			callOnScripts('onMoveCamera', ['boyfriend']);
+		// Play Opponent only: re-apply after scripts so camera is not left on BF
+		if (opponentMode)
+			moveCamera(isDad);
 	}
 	
 	public function moveCameraToGirlfriend()
@@ -2707,6 +2741,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		{
 			try {
 				Paths.clearUnusedMemory();
+				Paths.clearStoredMemory();
 			} catch (e:Dynamic) {}
 		}
 
@@ -3150,7 +3185,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				if(pressArray[i] && strumsBlocked[i] != true)
 					keyPressed(i);
 
-		if (startedCountdown && !inCutscene && !boyfriend.stunned && generatedMusic)
+		var holdStun:Bool = opponentMode ? (dad != null && dad.stunned) : (boyfriend != null && boyfriend.stunned);
+		if (startedCountdown && !inCutscene && !holdStun && generatedMusic)
 		{
 			if (notes.length > 0) {
 				for (n in notes) { // I can't do a filter here, that's kinda awesome
@@ -3377,9 +3413,13 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		{
 			var hs:String = (note.hitsound != null && note.hitsound.length > 0) ? note.hitsound : 'hitsound';
 			try {
-				FlxG.sound.play(Paths.sound(hs), note.hitsoundVolume);
+				var snd = Paths.sound(hs);
+				if (snd != null) FlxG.sound.play(snd, note.hitsoundVolume);
 			} catch (e:Dynamic) {
-				try { FlxG.sound.play(Paths.sound('hitsound'), note.hitsoundVolume); } catch (e2:Dynamic) {}
+				try {
+					var snd2 = Paths.sound('hitsound');
+					if (snd2 != null) FlxG.sound.play(snd2, note.hitsoundVolume);
+				} catch (e2:Dynamic) {}
 			}
 		}
 
@@ -3608,6 +3648,14 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	public function playerDance():Void
 	{
+		if (opponentMode)
+		{
+			if (dad == null) return;
+			var anim:String = dad.getAnimationName();
+			if(dad.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * dad.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
+				dad.dance();
+			return;
+		}
 		var anim:String = boyfriend.getAnimationName();
 		if(boyfriend.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * boyfriend.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
 			boyfriend.dance();
