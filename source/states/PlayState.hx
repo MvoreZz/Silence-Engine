@@ -1769,19 +1769,6 @@ class PlayState extends MusicBeatState
 		}
 	}
 
-	override public function destroy()
-	{
-		if (ClientPrefs.data.autoClearCacheAfterMatch)
-		{
-			try {
-				Paths.clearUnusedMemory();
-				Paths.clearStoredMemory();
-			} catch (e:Dynamic) {}
-		}
-		super.destroy();
-	}
-
-
 	#if DISCORD_ALLOWED
 	override public function onFocus():Void
 	{
@@ -3531,6 +3518,13 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	}
 
 	override function destroy() {
+		if (ClientPrefs.data.autoClearCacheAfterMatch)
+		{
+			try {
+				Paths.clearUnusedMemory();
+				Paths.clearStoredMemory();
+			} catch (e:Dynamic) {}
+		}
 		if (psychlua.CustomSubstate.instance != null)
 		{
 			closeSubState();
