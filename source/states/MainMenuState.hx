@@ -15,7 +15,7 @@ enum MainMenuColumn {
 class MainMenuState extends MusicBeatState
 {
 	public static var psychEngineVersion:String = '1.0.4'; // This is also used for Discord RPC
-	public static var silenceEngineName:String = 'Silence Engine';
+	public static var silenceEngineName:String = 'Silence Engine'; //
 	public static var silenceEngineVersion:String = '1.1.0';
 	public static var curSelected:Int = 0;
 	public static var curColumn:MainMenuColumn = CENTER;
@@ -154,10 +154,17 @@ class MainMenuState extends MusicBeatState
 		#end
 
 		#if CHECK_FOR_UPDATES
-		if (showOutdatedWarning && ClientPrefs.data.checkForUpdates && substates.OutdatedSubState.updateVersion != silenceEngineVersion) {
-			persistentUpdate = false;
-			showOutdatedWarning = false;
-			openSubState(new substates.OutdatedSubState());
+		// Compare against YOUR engine version (not stock Psych string mismatch)
+		if (showOutdatedWarning && ClientPrefs.data.checkForUpdates)
+		{
+			var remote:String = substates.OutdatedSubState.updateVersion;
+			var local:String = silenceEngineVersion;
+			if (remote != null && remote.length > 0 && remote.trim() != local.trim() && remote.trim() != psychEngineVersion.trim())
+			{
+				persistentUpdate = false;
+				showOutdatedWarning = false;
+				openSubState(new substates.OutdatedSubState());
+			}
 		}
 		#end
 
