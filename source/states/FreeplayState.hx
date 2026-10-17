@@ -58,6 +58,8 @@ class FreeplayState extends MusicBeatState
 	var searchString:String = '';
 	var searchText:FlxText;
 	var searchBG:FlxSprite;
+	var searchBorder:FlxSprite;
+	var searchIcon:FlxText;
 	var searching:Bool = false;
 	var filtered:Array<Int> = [];
 	var curFiltered:Int = 0;
@@ -206,18 +208,32 @@ class FreeplayState extends MusicBeatState
 		changeSelection();
 		updateTexts();
 
-		// Search bar UI (top center) - works on desktop + mobile
-		searchBG = new FlxSprite(0, 12).makeGraphic(Std.int(FlxG.width * 0.6), 36, FlxColor.BLACK);
-		searchBG.alpha = 0.6;
+		// Search bar UI (top center) — visual rework, same filter logic
+		var barW:Int = Std.int(FlxG.width * 0.72);
+		var barH:Int = 44;
+		searchBorder = new FlxSprite(0, 10).makeGraphic(barW + 4, barH + 4, 0xFF7B61FF);
+		searchBorder.alpha = 0.85;
+		searchBorder.screenCenter(X);
+		searchBorder.scrollFactor.set();
+		add(searchBorder);
+
+		searchBG = new FlxSprite(0, 12).makeGraphic(barW, barH, 0xFF12121A);
+		searchBG.alpha = 0.92;
 		searchBG.screenCenter(X);
 		searchBG.scrollFactor.set();
 		add(searchBG);
 
-		searchText = new FlxText(searchBG.x + 10, 16, searchBG.width - 20, '', 20);
-		searchText.setFormat(Paths.font('vcr.ttf'), 20, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		searchIcon = new FlxText(searchBG.x + 12, searchBG.y + 8, 28, '>', 22);
+		searchIcon.setFormat(Paths.font('vcr.ttf'), 22, 0xFFB8A9FF, LEFT);
+		searchIcon.scrollFactor.set();
+		add(searchIcon);
+
+		searchText = new FlxText(searchBG.x + 40, searchBG.y + 10, searchBG.width - 52, '', 18);
+		searchText.setFormat(Paths.font('vcr.ttf'), 18, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		searchText.borderSize = 1.5;
 		searchText.scrollFactor.set();
 		add(searchText);
-		searching = false; // don't open keyboard until user taps search bar
+		searching = false;
 		updateSearchLabel();
 
 		// Mobile text input listener (keyboard only enabled on search bar tap)
@@ -695,9 +711,19 @@ class FreeplayState extends MusicBeatState
 	{
 		if (searchText == null) return;
 		if (searchString.length > 0)
-			searchText.text = searchString + '_';
+		{
+			searchText.text = searchString + (searching ? '|' : '');
+			searchText.color = FlxColor.WHITE;
+			if (searchBorder != null) searchBorder.color = 0xFF9B7BFF;
+		}
 		else
-			searchText.text = 'Tap to search songs...';
+		{
+			searchText.text = searching ? '|' : 'Search songs...';
+			searchText.color = 0xFF8888AA;
+			if (searchBorder != null) searchBorder.color = searching ? 0xFF9B7BFF : 0xFF7B61FF;
+		}
+		if (searchIcon != null)
+			searchIcon.color = searching ? 0xFFE0D6FF : 0xFFB8A9FF;
 	}
 
 	function onMobileTextInput(text:String):Void
