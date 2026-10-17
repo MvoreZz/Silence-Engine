@@ -276,19 +276,34 @@ class ShaderFunctions
 	}
 	
 	#if (!flash && MODS_ALLOWED && sys)
+	// legacyShaderBoost: broader object resolve for 0.6.3 / 0.7.3 mods
 	public static function getShader(obj:String):FlxRuntimeShader
 	{
-		var split:Array<String> = obj.split('.');
-		var target:FlxSprite = null;
-		if(split.length > 1) target = LuaUtils.getVarInArray(LuaUtils.getPropertyLoop(split), split[split.length-1]);
-		else target = LuaUtils.getObjectDirectly(split[0]);
-
+		#if (!flash && sys)
+		var target:Dynamic = null;
+		try { target = LuaUtils.getObjectDirectly(obj); } catch (e:Dynamic) {}
+		if (target == null && PlayState.instance != null)
+		{
+			try {
+				if (Reflect.hasField(PlayState.instance, obj))
+					target = Reflect.field(PlayState.instance, obj);
+				else if (PlayState.instance.variables != null && PlayState.instance.variables.exists(obj))
+					target = PlayState.instance.variables.get(obj);
+			} catch (e2:Dynamic) {}
+		}
 		if(target == null)
 		{
-			FunkinLua.luaTrace('Error on getting shader: Object $obj not found', false, false, FlxColor.RED);
+			FunkinLua.luaTrace('getShader: Object $obj does not exist!', false, false, FlxColor.RED);
 			return null;
 		}
-		return cast (target.shader, FlxRuntimeShader);
+		try {
+			if (target.shader != null)
+				return cast (target.shader, FlxRuntimeShader);
+		} catch (e3:Dynamic) {}
+		return null;
+		#else
+		return null;
+		#end
 	}
 	#end
 }
