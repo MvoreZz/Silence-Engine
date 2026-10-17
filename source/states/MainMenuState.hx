@@ -154,7 +154,6 @@ class MainMenuState extends MusicBeatState
 		#end
 
 		#if CHECK_FOR_UPDATES
-		// Compare against YOUR engine version (not stock Psych string mismatch)
 		if (showOutdatedWarning && ClientPrefs.data.checkForUpdates)
 		{
 			var remote:String = substates.OutdatedSubState.updateVersion;
