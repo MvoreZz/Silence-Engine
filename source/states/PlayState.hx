@@ -1533,7 +1533,7 @@ class PlayState extends MusicBeatState
 							oldNote.resizeByRatio(curStepCrochet / Conductor.stepCrochet);
 						}
 
-						if (sustainNote.mustPress) sustainNote.x += FlxG.width / 2; // general offset
+						if (sustainNote.mustPress && !opponentMode) sustainNote.x += FlxG.width / 2;
 						else if(ClientPrefs.data.middleScroll)
 						{
 							sustainNote.x += 310;
@@ -1545,7 +1545,9 @@ class PlayState extends MusicBeatState
 
 				if (swagNote.mustPress)
 				{
-					swagNote.x += FlxG.width / 2; // general offset
+					// Play Opponent: player hits dad side (left) — do not shift to BF side
+					if (!opponentMode)
+						swagNote.x += FlxG.width / 2;
 				}
 				else if(ClientPrefs.data.middleScroll)
 				{
@@ -2014,7 +2016,10 @@ class PlayState extends MusicBeatState
 							if(daNote == null) continue;
 
 							var strumGroup:FlxTypedGroup<StrumNote> = playerStrums;
-							if(!daNote.mustPress) strumGroup = opponentStrums;
+							if (opponentMode)
+								strumGroup = daNote.mustPress ? opponentStrums : playerStrums;
+							else if(!daNote.mustPress)
+								strumGroup = opponentStrums;
 
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
@@ -3023,7 +3028,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	private function keyPressed(key:Int)
 	{
 		var playCharStun:Character = opponentMode ? dad : boyfriend;
-		if(cpuControlled || paused || inCutscene || key < 0 || key >= playerStrums.length || !generatedMusic || endingSong || (playCharStun != null && playCharStun.stunned)) return;
+		var activeStrumLen:Int = opponentMode ? opponentStrums.length : playerStrums.length;
+		if(cpuControlled || paused || inCutscene || key < 0 || key >= activeStrumLen || !generatedMusic || endingSong || (playCharStun != null && playCharStun.stunned)) return;
 
 		var ret:Dynamic = callOnScripts('onKeyPressPre', [key]);
 		if(ret == LuaUtils.Function_Stop) return;
@@ -3073,7 +3079,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		//more accurate hit time for the ratings? part 2 (Now that the calculations are done, go back to the time it was before for not causing a note stutter)
 		Conductor.songPosition = lastTime;
 
-		var spr:StrumNote = playerStrums.members[key];
+		var spr:StrumNote = (opponentMode ? opponentStrums : playerStrums).members[key];
 		if(strumsBlocked[key] != true && spr != null && spr.animation.curAnim.name != 'confirm')
 		{
 			spr.playAnim('pressed');
@@ -3451,10 +3457,10 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 			if(!cpuControlled)
 			{
-				var spr = playerStrums.members[note.noteData];
+				var spr = (opponentMode ? opponentStrums : playerStrums).members[note.noteData];
 				if(spr != null) spr.playAnim('confirm', true);
 			}
-			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+			else strumPlayAnim(opponentMode, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 			vocals.volume = 1;
 
 			if (!note.isSustainNote)
