@@ -321,7 +321,7 @@ class PlayState extends MusicBeatState
 		instakillOnMiss = ClientPrefs.getGameplaySetting('instakill');
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
-		opponentMode = ClientPrefs.getGameplaySetting('opponentplay');
+		opponentMode = (ClientPrefs.getGameplaySetting('opponentplay') == true);
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
 
 		// var gameCam:FlxCamera = FlxG.camera;
@@ -1469,10 +1469,11 @@ class PlayState extends MusicBeatState
 				var isAlt: Bool = section.altAnim && !gottaHitNote;
 				swagNote.gfNote = (section.gfSection && gottaHitNote == section.mustHitSection);
 				swagNote.animSuffix = isAlt ? "-alt" : "";
-				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
 				swagNote.sustainLength = holdLength;
 				swagNote.noteType = noteType;
-	
+				// Force after noteType — some types change mustPress in their setter
+				swagNote.mustPress = opponentMode ? !gottaHitNote : gottaHitNote;
+
 				swagNote.scrollFactor.set();
 				unspawnNotes.push(swagNote);
 
@@ -1486,9 +1487,9 @@ class PlayState extends MusicBeatState
 
 						var sustainNote:Note = new Note(spawnTime + (curStepCrochet * susNote), noteColumn, oldNote, true);
 						sustainNote.animSuffix = swagNote.animSuffix;
-						sustainNote.mustPress = swagNote.mustPress;
 						sustainNote.gfNote = swagNote.gfNote;
 						sustainNote.noteType = swagNote.noteType;
+						sustainNote.mustPress = swagNote.mustPress;
 						sustainNote.scrollFactor.set();
 						sustainNote.parent = swagNote;
 						unspawnNotes.push(sustainNote);
@@ -1742,6 +1743,7 @@ class PlayState extends MusicBeatState
 			FlxTween.globalManager.forEach(function(twn:FlxTween) if(!twn.finished) twn.active = true);
 
 			paused = false;
+			persistentUpdate = true;
 			callOnScripts('onResume');
 			resetRPC(startTimer != null && startTimer.finished);
 			runSongSyncThread();
@@ -2010,8 +2012,16 @@ class PlayState extends MusicBeatState
 								if(cpuControlled && !daNote.blockHit && daNote.canBeHit && (daNote.isSustainNote || daNote.strumTime <= Conductor.songPosition))
 									goodNoteHit(daNote);
 							}
-							else if (daNote.wasGoodHit && !daNote.hitByOpponent && !daNote.ignoreNote)
-								opponentNoteHit(daNote);
+							else
+							{
+								// CPU / other side auto-hit (works in normal + opponent mode)
+								if (!daNote.blockHit && !daNote.ignoreNote && !daNote.hitByOpponent
+									&& (daNote.wasGoodHit || daNote.strumTime <= Conductor.songPosition))
+								{
+									daNote.wasGoodHit = true;
+									opponentNoteHit(daNote);
+								}
+							}
 
 							if(daNote.isSustainNote && strum.sustainReduce) daNote.clipToStrumNote(strum);
 
@@ -2990,7 +3000,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function keyPressed(key:Int)
 	{
-		if(cpuControlled || paused || inCutscene || key < 0 || key >= playerStrums.length || !generatedMusic || endingSong || boyfriend.stunned) return;
+		var playCharStun:Character = opponentMode ? dad : boyfriend;
+		if(cpuControlled || paused || inCutscene || key < 0 || key >= playerStrums.length || !generatedMusic || endingSong || (playCharStun != null && playCharStun.stunned)) return;
 
 		var ret:Dynamic = callOnScripts('onKeyPressPre', [key]);
 		if(ret == LuaUtils.Function_Stop) return;
@@ -3304,11 +3315,12 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (songName != 'tutorial')
 			camZooming = true;
 
-		if(note.noteType == 'Hey!' && dad.hasAnimation('hey'))
+		var cpuChar:Character = opponentMode ? boyfriend : dad;
+		if(note.noteType == 'Hey!' && cpuChar != null && cpuChar.hasAnimation('hey'))
 		{
-			dad.playAnim('hey', true);
-			dad.specialAnim = true;
-			dad.heyTimer = 0.6;
+			cpuChar.playAnim('hey', true);
+			cpuChar.specialAnim = true;
+			cpuChar.heyTimer = 0.6;
 		}
 		else if(!note.noAnimation)
 		{
