@@ -211,7 +211,7 @@ class FreeplayState extends MusicBeatState
 		// Search bar UI (top center) — visual rework, same filter logic
 		var barW:Int = Std.int(FlxG.width * 0.42);
 		var barH:Int = 40;
-		var barX:Float = FlxG.width * 0.04; // shift left a bit
+		var barX:Float = FlxG.width * 0.12; // slightly left of center
 		searchBorder = new FlxSprite(barX - 2, 10).makeGraphic(barW + 4, barH + 4, 0xFF7B61FF);
 		searchBorder.alpha = 0.85;
 		searchBorder.scrollFactor.set();
