@@ -101,6 +101,12 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		};
 		addOption(option);
 
+		var option:Option = new Option('Auto Clear Cache After Match',
+			'If checked, unused assets are cleared when a song ends\nto free RAM. Turn off if you notice longer reloads.',
+			'autoClearCacheAfterMatch',
+			BOOL);
+		addOption(option);
+
 		super();
 		insert(1, boyfriend);
 	}
