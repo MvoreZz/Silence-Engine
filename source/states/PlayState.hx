@@ -566,7 +566,8 @@ class PlayState extends MusicBeatState
 			return health;
 		}, 0, 2);
 		healthBar.screenCenter(X);
-		healthBar.leftToRight = false;
+		// Drain direction matches who you play as (opponent mode flips visual side)
+		healthBar.leftToRight = opponentMode;
 		healthBar.scrollFactor.set();
 		healthBar.visible = !ClientPrefs.data.hideHud;
 		healthBar.alpha = ClientPrefs.data.healthBarAlpha;
@@ -767,8 +768,12 @@ class PlayState extends MusicBeatState
 	#end
 
 	public function reloadHealthBarColors() {
-		healthBar.setColors(FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
-			FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]));
+		if (opponentMode)
+			healthBar.setColors(FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]),
+				FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]));
+		else
+			healthBar.setColors(FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
+				FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]));
 	}
 
 	public function addCharacterToList(newCharacter:String, type:Int) {
@@ -2568,7 +2573,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	public function moveCameraSection(?sec:Null<Int>):Void {
 		if(sec == null) sec = curSection;
 		if(sec < 0) sec = 0;
-
+		if (SONG == null || SONG.notes == null) return;
+		if (sec >= SONG.notes.length) return;
 		if(SONG.notes[sec] == null) return;
 
 		if (gf != null && SONG.notes[sec].gfSection)
@@ -2686,6 +2692,13 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		camZooming = false;
 		inCutscene = false;
 		updateTime = false;
+
+		if (ClientPrefs.data.autoClearCacheAfterMatch)
+		{
+			try {
+				Paths.clearUnusedMemory();
+			} catch (e:Dynamic) {}
+		}
 
 		deathCounter = 0;
 		seenCutscene = false;
@@ -3349,7 +3362,14 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		note.wasGoodHit = true;
 
 		if (note.hitsoundVolume > 0 && !note.hitsoundDisabled)
-			FlxG.sound.play(Paths.sound(note.hitsound), note.hitsoundVolume);
+		{
+			var hs:String = (note.hitsound != null && note.hitsound.length > 0) ? note.hitsound : 'hitsound';
+			try {
+				FlxG.sound.play(Paths.sound(hs), note.hitsoundVolume);
+			} catch (e:Dynamic) {
+				try { FlxG.sound.play(Paths.sound('hitsound'), note.hitsoundVolume); } catch (e2:Dynamic) {}
+			}
+		}
 
 		if(!note.hitCausesMiss) //Common notes
 		{
