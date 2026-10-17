@@ -21,7 +21,7 @@ import states.TitleState;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
 	public var fpsRework:Bool = false;
-	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
+	public var smoothHealthBar:Bool = true; // lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
 	public var graphicsQuality:String = 'Low'; // set by analyzeDeviceQuality on load unless Custom
 	
@@ -42,6 +42,7 @@ import states.TitleState;
 	public var cacheOnGPU:Bool = #if !switch false #else true #end; // GPU Caching made by Raltyro
 	public var framerate:Int = 60;
 	public var unlimitedFPS:Bool = false;
+	public var autoClearCacheAfterMatch:Bool = true; // clear unused assets after song ends
 	public var camZooms:Bool = true;
 	public var hideHud:Bool = false;
 	public var noteOffset:Int = 0;
