@@ -205,7 +205,7 @@ class PlayState extends MusicBeatState
 	public var cpuControlled:Bool = false;
 	public var opponentMode:Bool = false;
 
-	/** Psych Online-style Play Opponent: mustPress stays chart-accurate; who plays is playsAsBF(). */
+	/** Play Opponent: mustPress stays chart-accurate; who plays is playsAsBF(). */
 	public static function playsAsBF():Bool
 		return !(instance != null && instance.opponentMode);
 
@@ -475,6 +475,13 @@ class PlayState extends MusicBeatState
 		boyfriend = new Character(0, 0, SONG.player1, true);
 		startCharacterPos(boyfriend);
 		boyfriendGroup.add(boyfriend);
+		// Play Opponent: who is "player" character
+		if (opponentMode)
+		{
+			boyfriend.isPlayer = false;
+			dad.isPlayer = true;
+		}
+
 		
 		if(stageData.objects != null && stageData.objects.length > 0)
 		{
@@ -2048,12 +2055,13 @@ class PlayState extends MusicBeatState
 							var daNote:Note = notes.members[i];
 							if(daNote == null) continue;
 
-							var strumGroup:FlxTypedGroup<StrumNote> = isPlayerNote(daNote) ? getPlayerStrums() : getOpponentStrums();
+							// notes follow chart mustPress lanes (left=dad, right=BF)
+							var strumGroup:FlxTypedGroup<StrumNote> = playerStrums;
+							if (!daNote.mustPress) strumGroup = opponentStrums;
 
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 
-							// V-Slice: hide non-player notes
 							if (ClientPrefs.data.vsliceMobileControls && !isPlayerNote(daNote))
 							{
 								daNote.visible = false;
@@ -3260,7 +3268,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		}
 		//Dupe note remove
 		notes.forEachAlive(function(note:Note) {
-			if (daNote != note && daNote.mustPress && daNote.noteData == note.noteData && daNote.isSustainNote == note.isSustainNote && Math.abs(daNote.strumTime - note.strumTime) < 1)
+			if (daNote != note && isPlayerNote(daNote) && daNote.noteData == note.noteData && daNote.isSustainNote == note.isSustainNote && Math.abs(daNote.strumTime - note.strumTime) < 1)
 				invalidateNote(note);
 		});
 
