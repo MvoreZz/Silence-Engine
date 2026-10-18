@@ -321,7 +321,8 @@ class PlayState extends MusicBeatState
 		instakillOnMiss = ClientPrefs.getGameplaySetting('instakill');
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
-		opponentMode = (ClientPrefs.getGameplaySetting('opponentplay') == true);
+		var _opDyn:Dynamic = ClientPrefs.getGameplaySetting('opponentplay');
+		opponentMode = (_opDyn == true || _opDyn == 'true' || _opDyn == 1 || _opDyn == '1');
 		// scripts can read this (Play Opponent only)
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
 
@@ -771,13 +772,12 @@ class PlayState extends MusicBeatState
 
 	public function reloadHealthBarColors() {
 		if (healthBar == null) return;
+		// Drain direction only when Play Opponent; colors stay dad | bf (not swapped)
 		healthBar.leftToRight = opponentMode;
-		if (opponentMode)
-			healthBar.setColors(FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]),
-				FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]));
-		else
-			healthBar.setColors(FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
-				FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2]));
+		healthBar.setColors(
+			FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
+			FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2])
+		);
 	}
 
 	public function addCharacterToList(newCharacter:String, type:Int) {
@@ -1453,14 +1453,15 @@ class PlayState extends MusicBeatState
 				var finalMustPress:Bool;
 				if (opponentMode)
 				{
-					// Chart: mustHitSection = BF side. data>3 flips within section.
-					// Play Opponent: player is dad → mustPress on dad chart notes (!BF side)
-					// so notes come to the PLAYER lane, not BF/CPU.
-					var chartIsBfSide:Bool = (section.mustHitSection == true);
+					// Psych-style Play Opponent:
+					// mustHitSection true = BF chart notes → CPU
+					// mustHitSection false = dad chart notes → PLAYER (you)
+					// data > 3 flips side within the section
+					var must:Bool = (section.mustHitSection == true);
 					if (rawData > 3)
-						chartIsBfSide = !chartIsBfSide;
-					gottaHitNote = chartIsBfSide;
-					finalMustPress = !chartIsBfSide;
+						must = !must;
+					gottaHitNote = must;
+					finalMustPress = !must; // you receive dad's notes
 				}
 				else
 				{
