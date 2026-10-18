@@ -204,6 +204,40 @@ class PlayState extends MusicBeatState
 	public var instakillOnMiss:Bool = false;
 	public var cpuControlled:Bool = false;
 	public var opponentMode:Bool = false;
+
+	/** Psych Online-style Play Opponent: mustPress stays chart-accurate; who plays is playsAsBF(). */
+	public static function playsAsBF():Bool
+		return !(instance != null && instance.opponentMode);
+
+	public static inline function isPlayerNote(note:Note):Bool
+		return note != null && note.mustPress == playsAsBF();
+
+	public function getPlayerStrums():FlxTypedGroup<StrumNote>
+		return playsAsBF() ? playerStrums : opponentStrums;
+
+	public function getOpponentStrums():FlxTypedGroup<StrumNote>
+		return playsAsBF() ? opponentStrums : playerStrums;
+
+	public function getSelfChar():Character
+		return playsAsBF() ? boyfriend : dad;
+
+	public function getOppChar():Character
+		return playsAsBF() ? dad : boyfriend;
+
+	public function addHealth(v:Float):Float
+	{
+		if (!playsAsBF())
+			return health -= v;
+		return health += v;
+	}
+
+	public function subsHealth(v:Float):Float
+	{
+		if (!playsAsBF())
+			return health += v;
+		return health -= v;
+	}
+
 	public var practiceMode:Bool = false;
 	public var pressMissDamage:Float = 0.05;
 
@@ -570,7 +604,7 @@ class PlayState extends MusicBeatState
 		}, 0, 2);
 		healthBar.screenCenter(X);
 		// Drain direction matches who you play as (opponent mode flips visual side)
-		healthBar.leftToRight = opponentMode;
+		healthBar.leftToRight = !playsAsBF();
 		healthBar.scrollFactor.set();
 		healthBar.visible = !ClientPrefs.data.hideHud;
 		healthBar.alpha = ClientPrefs.data.healthBarAlpha;
@@ -773,7 +807,7 @@ class PlayState extends MusicBeatState
 	public function reloadHealthBarColors() {
 		if (healthBar == null) return;
 		// Drain direction only when Play Opponent; colors stay dad | bf (not swapped)
-		healthBar.leftToRight = opponentMode;
+		healthBar.leftToRight = !playsAsBF();
 		healthBar.setColors(
 			FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
 			FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2])
@@ -1453,15 +1487,12 @@ class PlayState extends MusicBeatState
 				var finalMustPress:Bool;
 				if (opponentMode)
 				{
-					// Psych-style Play Opponent:
-					// mustHitSection true = BF chart notes → CPU
-					// mustHitSection false = dad chart notes → PLAYER (you)
-					// data > 3 flips side within the section
+					// Chart-accurate mustPress (BF side = true). Who hits is isPlayerNote/playsAsBF — no flip.
 					var must:Bool = (section.mustHitSection == true);
 					if (rawData > 3)
 						must = !must;
 					gottaHitNote = must;
-					finalMustPress = !must; // you receive dad's notes
+					finalMustPress = must;
 				}
 				else
 				{
@@ -2017,27 +2048,25 @@ class PlayState extends MusicBeatState
 							var daNote:Note = notes.members[i];
 							if(daNote == null) continue;
 
-							var strumGroup:FlxTypedGroup<StrumNote> = playerStrums;
-							if(!daNote.mustPress) strumGroup = opponentStrums;
+							var strumGroup:FlxTypedGroup<StrumNote> = isPlayerNote(daNote) ? getPlayerStrums() : getOpponentStrums();
 
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 
-							// V-Slice: keep opponent notes hidden
-							if (ClientPrefs.data.vsliceMobileControls && !daNote.mustPress)
+							// V-Slice: hide non-player notes
+							if (ClientPrefs.data.vsliceMobileControls && !isPlayerNote(daNote))
 							{
 								daNote.visible = false;
 								daNote.alpha = 0;
 							}
 
-							if(daNote.mustPress)
+							if(isPlayerNote(daNote))
 							{
 								if(cpuControlled && !daNote.blockHit && daNote.canBeHit && (daNote.isSustainNote || daNote.strumTime <= Conductor.songPosition))
 									goodNoteHit(daNote);
 							}
 							else
 							{
-								// CPU / other side auto-hit (works in normal + opponent mode)
 								if (!daNote.blockHit && !daNote.ignoreNote && !daNote.hitByOpponent
 									&& (daNote.wasGoodHit || daNote.strumTime <= Conductor.songPosition))
 								{
@@ -2046,12 +2075,11 @@ class PlayState extends MusicBeatState
 								}
 							}
 
-							if(daNote.isSustainNote && strum.sustainReduce) daNote.clipToStrumNote(strum);
+							if(daNote.isSustainNote && strum != null && strum.sustainReduce) daNote.clipToStrumNote(strum);
 
-							// Kill extremely late notes and cause misses
 							if (Conductor.songPosition - daNote.strumTime > noteKillOffset)
 							{
-								if (daNote.mustPress && !cpuControlled && !daNote.ignoreNote && !endingSong && (daNote.tooLate || !daNote.wasGoodHit))
+								if (isPlayerNote(daNote) && !cpuControlled && !daNote.ignoreNote && !endingSong && (daNote.tooLate || !daNote.wasGoodHit))
 									noteMiss(daNote);
 
 								daNote.active = daNote.visible = false;
@@ -2617,15 +2645,15 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			return;
 		}
 
+		// Chart section focus; Play Opponent uses playsAsBF so dad sections focus you when you play dad
 		var isDad:Bool = (SONG.notes[sec].mustHitSection != true);
+		if (opponentMode)
+			isDad = (SONG.notes[sec].mustHitSection != true); // dad chart → dad cam (you)
 		moveCamera(isDad);
 		if (isDad)
 			callOnScripts('onMoveCamera', ['dad']);
 		else
 			callOnScripts('onMoveCamera', ['boyfriend']);
-		// Play Opponent only: re-apply after scripts so camera is not left on BF
-		if (opponentMode)
-			moveCamera(isDad);
 	}
 	
 	public function moveCameraToGirlfriend()
@@ -3026,8 +3054,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function keyPressed(key:Int)
 	{
-		var playCharStun:Character = opponentMode ? dad : boyfriend;
-		if(cpuControlled || paused || inCutscene || key < 0 || key >= playerStrums.length || !generatedMusic || endingSong || (playCharStun != null && playCharStun.stunned)) return;
+		var playCharStun:Character = getSelfChar();
+		var pStrums = getPlayerStrums();
+		if(cpuControlled || paused || inCutscene || key < 0 || key >= pStrums.length || !generatedMusic || endingSong || (playCharStun != null && playCharStun.stunned)) return;
 
 		var ret:Dynamic = callOnScripts('onKeyPressPre', [key]);
 		if(ret == LuaUtils.Function_Stop) return;
@@ -3038,7 +3067,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 		// obtain notes that the player can hit
 		var plrInputNotes:Array<Note> = notes.members.filter(function(n:Note):Bool {
-			var canHit:Bool = n != null && !strumsBlocked[n.noteData] && n.canBeHit && n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit;
+			var canHit:Bool = n != null && !strumsBlocked[n.noteData] && n.canBeHit && isPlayerNote(n) && !n.tooLate && !n.wasGoodHit && !n.blockHit;
 			return canHit && !n.isSustainNote && n.noteData == key;
 		});
 		plrInputNotes.sort(sortHitNotes);
@@ -3077,7 +3106,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		//more accurate hit time for the ratings? part 2 (Now that the calculations are done, go back to the time it was before for not causing a note stutter)
 		Conductor.songPosition = lastTime;
 
-		var spr:StrumNote = playerStrums.members[key];
+		var spr:StrumNote = getPlayerStrums().members[key];
 		if(strumsBlocked[key] != true && spr != null && spr.animation.curAnim.name != 'confirm')
 		{
 			spr.playAnim('pressed');
@@ -3110,7 +3139,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		var ret:Dynamic = callOnScripts('onKeyReleasePre', [key]);
 		if(ret == LuaUtils.Function_Stop) return;
 
-		var spr:StrumNote = playerStrums.members[key];
+		var spr:StrumNote = getPlayerStrums().members[key];
 		if(spr != null)
 		{
 			spr.playAnim('static');
@@ -3182,7 +3211,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			if (notes.length > 0) {
 				for (n in notes) { // I can't do a filter here, that's kinda awesome
 					var canHit:Bool = (n != null && !strumsBlocked[n.noteData] && n.canBeHit
-						&& n.mustPress && !n.tooLate && !n.wasGoodHit && !n.blockHit);
+						&& isPlayerNote(n) && !n.tooLate && !n.wasGoodHit && !n.blockHit);
 
 					if (guitarHeroSustains)
 						canHit = canHit && n.parent != null && n.parent.wasGoodHit;
@@ -3305,14 +3334,14 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		var lastCombo:Int = combo;
 		combo = 0;
 
-		health -= subtract * healthLoss;
+		subsHealth(subtract * healthLoss);
 		songScore -= 10;
 		if(!endingSong) songMisses++;
 		totalPlayed++;
 		RecalculateRating(true);
 
 		// play character anims (opponent mode: player controls dad)
-		var char:Character = opponentMode ? dad : boyfriend;
+		var char:Character = getSelfChar();
 		if((note != null && note.gfNote) || (SONG.notes[curSection] != null && SONG.notes[curSection].gfSection)) char = gf;
 
 		if(char != null && (note == null || !note.noMissAnimation) && char.hasMissAnimations)
@@ -3342,7 +3371,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (songName != 'tutorial')
 			camZooming = true;
 
-		var cpuChar:Character = opponentMode ? boyfriend : dad;
+		var cpuChar:Character = getOppChar();
 		if(note.noteType == 'Hey!' && cpuChar != null && cpuChar.hasAnimation('hey'))
 		{
 			cpuChar.playAnim('hey', true);
@@ -3351,7 +3380,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		}
 		else if(!note.noAnimation)
 		{
-			var char:Character = opponentMode ? boyfriend : dad;
+			var char:Character = getOppChar();
 			var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 			if(note.gfNote) char = gf;
 
@@ -3420,7 +3449,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			{
 				var animToPlay:String = singAnimations[Std.int(Math.abs(Math.min(singAnimations.length-1, note.noteData)))] + note.animSuffix;
 
-				var char:Character = opponentMode ? dad : boyfriend;
+				var char:Character = getSelfChar();
 				var animCheck:String = 'hey';
 				if(note.gfNote)
 				{
@@ -3455,7 +3484,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 			if(!cpuControlled)
 			{
-				var spr = playerStrums.members[note.noteData];
+				var spr = getPlayerStrums().members[note.noteData];
 				if(spr != null) spr.playAnim('confirm', true);
 			}
 			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
@@ -3471,7 +3500,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;
-			if (gainHealth) health += note.hitHealth * healthGain;
+			if (gainHealth) addHealth(note.hitHealth * healthGain);
 
 		}
 		else //Notes that count as a miss if you hit them (Hurt notes for example)
@@ -3481,7 +3510,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				switch(note.noteType)
 				{
 					case 'Hurt Note':
-						var hurtChar:Character = opponentMode ? dad : boyfriend;
+						var hurtChar:Character = getSelfChar();
 						if(hurtChar != null && hurtChar.hasAnimation('hurt'))
 						{
 							hurtChar.playAnim('hurt', true);
@@ -3646,17 +3675,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	public function playerDance():Void
 	{
-		if (opponentMode)
-		{
-			if (dad == null) return;
-			var anim:String = dad.getAnimationName();
-			if(dad.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * dad.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
-				dad.dance();
-			return;
-		}
-		var anim:String = boyfriend.getAnimationName();
-		if(boyfriend.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * boyfriend.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
-			boyfriend.dance();
+		var char:Character = getSelfChar();
+		if (char == null) return;
+		var anim:String = char.getAnimationName();
+		if(char.holdTimer > Conductor.stepCrochet * (0.0011 #if FLX_PITCH / FlxG.sound.music.pitch #end) * char.singDuration && anim.startsWith('sing') && !anim.endsWith('miss'))
+			char.dance();
 	}
 
 	override function sectionHit()
