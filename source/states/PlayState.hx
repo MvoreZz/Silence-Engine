@@ -205,12 +205,15 @@ class PlayState extends MusicBeatState
 	public var cpuControlled:Bool = false;
 	public var opponentMode:Bool = false;
 
-	/** Play Opponent: mustPress stays chart-accurate; who plays is playsAsBF(). */
+	/** -style Play Opponent: mustPress stays chart-accurate; who plays is playsAsBF(). */
 	public static function playsAsBF():Bool
 		return !(instance != null && instance.opponentMode);
 
 	public static inline function isPlayerNote(note:Note):Bool
 		return note != null && note.mustPress == playsAsBF();
+
+	public static function isPlayerStrumNote(player:Int):Bool
+		return playsAsBF() ? (player == 1) : (player == 0);
 
 	public function getPlayerStrums():FlxTypedGroup<StrumNote>
 		return playsAsBF() ? playerStrums : opponentStrums;
@@ -475,7 +478,7 @@ class PlayState extends MusicBeatState
 		boyfriend = new Character(0, 0, SONG.player1, true);
 		startCharacterPos(boyfriend);
 		boyfriendGroup.add(boyfriend);
-		// Play Opponent: who is "player" character
+		//  Play Opponent: who is "player" character
 		if (opponentMode)
 		{
 			boyfriend.isPlayer = false;
@@ -1172,11 +1175,11 @@ class PlayState extends MusicBeatState
 				if(!skipArrowStartTween)
 				{
 					notes.forEachAlive(function(note:Note) {
-						if(ClientPrefs.data.opponentStrums || note.mustPress)
+						if(ClientPrefs.data.opponentStrums || isPlayerNote(note))
 						{
 							note.copyAlpha = false;
 							note.alpha = note.multAlpha;
-							if(ClientPrefs.data.middleScroll && !note.mustPress)
+							if(ClientPrefs.data.middleScroll && !isPlayerNote(note))
 								note.alpha *= 0.35;
 						}
 					});
@@ -1735,7 +1738,8 @@ class PlayState extends MusicBeatState
 		{
 			// FlxG.log.add(i);
 			var targetAlpha:Float = 1;
-			if (player < 1)
+			// Dim the non-player side ( isPlayerStrumNote)
+			if (!isPlayerStrumNote(player))
 			{
 				if(!ClientPrefs.data.opponentStrums) targetAlpha = 0;
 				else if(ClientPrefs.data.middleScroll) targetAlpha = 0.35;
@@ -2055,9 +2059,8 @@ class PlayState extends MusicBeatState
 							var daNote:Note = notes.members[i];
 							if(daNote == null) continue;
 
-							// notes follow chart mustPress lanes (left=dad, right=BF)
-							var strumGroup:FlxTypedGroup<StrumNote> = playerStrums;
-							if (!daNote.mustPress) strumGroup = opponentStrums;
+							// Player notes follow active player strums (left when Play Opponent)
+							var strumGroup:FlxTypedGroup<StrumNote> = isPlayerNote(daNote) ? getPlayerStrums() : getOpponentStrums();
 
 							var strum:StrumNote = strumGroup.members[daNote.noteData];
 							daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
@@ -3142,7 +3145,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	private function keyReleased(key:Int)
 	{
-		if(cpuControlled || !startedCountdown || paused || key < 0 || key >= playerStrums.length) return;
+		if(cpuControlled || !startedCountdown || paused || key < 0 || key >= getPlayerStrums().length) return;
 
 		var ret:Dynamic = callOnScripts('onKeyReleasePre', [key]);
 		if(ret == LuaUtils.Function_Stop) return;
