@@ -227,6 +227,10 @@ class PlayState extends MusicBeatState
 	public function getOppChar():Character
 		return playsAsBF() ? dad : boyfriend;
 
+	/** Vocal track of the character YOU play (BF = vocals, Dad = opponentVocals if it exists). */
+	public function getPlayerVocals():FlxSound
+		return (playsAsBF() || opponentVocals == null || opponentVocals.length <= 0) ? vocals : opponentVocals;
+
 	public function addHealth(v:Float):Float
 	{
 		if (!playsAsBF())
@@ -1497,12 +1501,11 @@ class PlayState extends MusicBeatState
 				var finalMustPress:Bool;
 				if (opponentMode)
 				{
-					// Chart-accurate mustPress (BF side = true). Who hits is isPlayerNote/playsAsBF — no flip.
-					var must:Bool = (section.mustHitSection == true);
-					if (rawData > 3)
-						must = !must;
-					gottaHitNote = must;
-					finalMustPress = must;
+					// Chart-accurate mustPress (BF side = true), EXACTLY like the normal path:
+					// chart data is already normalized (0-3 = BF lane, 4-7 = dad lane), so do NOT
+					// apply section.mustHitSection again. Who hits is decided by isPlayerNote/playsAsBF.
+					gottaHitNote = (songNotes[1] < totalColumns);
+					finalMustPress = gottaHitNote;
 				}
 				else
 				{
@@ -1696,9 +1699,11 @@ class PlayState extends MusicBeatState
 		final playerY:Float = FlxG.height - slotW - 25;
 		final pairPull:Float = FlxG.width * 0.012;
 
-		for (i in 0...playerStrums.length)
+		var plrStrums = getPlayerStrums();
+		var oppStrums = getOpponentStrums();
+		for (i in 0...plrStrums.length)
 		{
-			var s:StrumNote = playerStrums.members[i];
+			var s:StrumNote = plrStrums.members[i];
 			if (s == null) continue;
 			s.scale.x *= 1.05;
 			s.scale.y *= 1.05;
@@ -1715,9 +1720,9 @@ class PlayState extends MusicBeatState
 
 		// Opponent strums near health bar, left side (opposite the icons)
 		final oppY:Float = (healthBar != null) ? (healthBar.y - 2) : 40; // aligned with health bar
-		for (i in 0...opponentStrums.length)
+		for (i in 0...oppStrums.length)
 		{
-			var s:StrumNote = opponentStrums.members[i];
+			var s:StrumNote = oppStrums.members[i];
 			if (s == null) continue;
 			s.scale.x *= 0.5;
 			s.scale.y *= 0.5;
@@ -2001,7 +2006,7 @@ class PlayState extends MusicBeatState
 
 				if (ClientPrefs.data.vsliceMobileControls)
 				{
-					if (dunceNote.mustPress)
+					if (isPlayerNote(dunceNote))
 					{
 						// Player notes at 1.05; do not shrink sustain Y (avoids gaps)
 						if (dunceNote.isSustainNote)
@@ -2191,7 +2196,7 @@ class PlayState extends MusicBeatState
 		}
 		if(!cpuControlled)
 		{
-			for (note in playerStrums)
+			for (note in getPlayerStrums())
 				if(note.animation.curAnim != null && note.animation.curAnim.name != 'static')
 				{
 					note.playAnim('static');
@@ -3369,7 +3374,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				gf.specialAnim = true;
 			}
 		}
-		vocals.volume = 0;
+		getPlayerVocals().volume = 0;
 	}
 
 	function opponentNoteHit(note:Note):Void
@@ -3410,8 +3415,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			}
 		}
 
-		if(opponentVocals.length <= 0) vocals.volume = 1;
-		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+		if(opponentVocals.length <= 0 || !playsAsBF()) vocals.volume = 1; // Play Opponent: CPU is BF = `vocals`
+		strumPlayAnimRole(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 		note.hitByOpponent = true;
 
 		if (!ClientPrefs.data.vsliceMobileControls)
@@ -3498,8 +3503,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				var spr = getPlayerStrums().members[note.noteData];
 				if(spr != null) spr.playAnim('confirm', true);
 			}
-			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
-			vocals.volume = 1;
+			else strumPlayAnimRole(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+			getPlayerVocals().volume = 1;
 
 			if (!note.isSustainNote)
 			{
@@ -3548,7 +3553,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	public function spawnNoteSplashOnNote(note:Note) {
 		if(note != null) {
-			var strum:StrumNote = playerStrums.members[note.noteData];
+			var strum:StrumNote = getPlayerStrums().members[note.noteData];
 			if(strum != null)
 				spawnNoteSplash(strum.x, strum.y, note.noteData, note, strum);
 		}
@@ -3949,6 +3954,15 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			script.set(variable, arg);
 		}
 		#end
+	}
+
+	/** Role based (Play Opponent safe): isOpponent=true -> the side the CPU plays, false -> the side YOU play. */
+	function strumPlayAnimRole(isOpponent:Bool, id:Int, time:Float) {
+		var spr:StrumNote = (isOpponent ? getOpponentStrums() : getPlayerStrums()).members[id];
+		if(spr != null) {
+			spr.playAnim('confirm', true);
+			spr.resetAnim = time;
+		}
 	}
 
 	function strumPlayAnim(isDad:Bool, id:Int, time:Float) {
