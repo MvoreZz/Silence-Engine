@@ -231,19 +231,13 @@ class PlayState extends MusicBeatState
 	public function getPlayerVocals():FlxSound
 		return (playsAsBF() || opponentVocals == null || opponentVocals.length <= 0) ? vocals : opponentVocals;
 
+	// The health bar is already mirrored in Play Opponent (healthBar.leftToRight = !playsAsBF()),
+	// so health must NOT be inverted here too. Your hits always add, your misses always subtract.
 	public function addHealth(v:Float):Float
-	{
-		if (!playsAsBF())
-			return health -= v;
 		return health += v;
-	}
 
 	public function subsHealth(v:Float):Float
-	{
-		if (!playsAsBF())
-			return health += v;
 		return health -= v;
-	}
 
 	public var practiceMode:Bool = false;
 	public var pressMissDamage:Float = 0.05;
