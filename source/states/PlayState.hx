@@ -233,6 +233,11 @@ class PlayState extends MusicBeatState
 
 	// The health bar is already mirrored in Play Opponent (healthBar.leftToRight = !playsAsBF()),
 	// so health must NOT be inverted here too. Your hits always add, your misses always subtract.
+	/** Script callbacks follow the CHART side, not who is playing:
+	 *  BF notes (mustPress) -> goodNoteHit*, Dad notes -> opponentNoteHit*. Same as normal play, in every mode. */
+	inline function noteHitCb(note:Note, pre:Bool = false):String
+		return (note.mustPress ? 'goodNoteHit' : 'opponentNoteHit') + (pre ? 'Pre' : '');
+
 	public function addHealth(v:Float):Float
 		return health += v;
 
@@ -734,7 +739,7 @@ class PlayState extends MusicBeatState
 		holdSplash.alpha = 0.0001;
 		grpHoldSplashes.add(holdSplash);
 
-		// P-Slice style pause button (top-right P)
+		// pause button (top-right P)
 		addTouchPad('NONE', 'P');
 		addTouchPadCamera();
 
@@ -3373,8 +3378,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 	function opponentNoteHit(note:Note):Void
 	{
-		var result:Dynamic = callOnLuas('opponentNoteHitPre', [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
-		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) result = callOnHScript('opponentNoteHitPre', [note]);
+		var result:Dynamic = callOnLuas(noteHitCb(note, true), [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
+		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) result = callOnHScript(noteHitCb(note, true), [note]);
 
 		if(result == LuaUtils.Function_Stop) return;
 
@@ -3416,9 +3421,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (!ClientPrefs.data.vsliceMobileControls)
 			spawnHoldSplashOnNote(note);
 		
-		stagesFunc(function(stage:BaseStage) stage.opponentNoteHit(note));
-		var result:Dynamic = callOnLuas('opponentNoteHit', [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
-		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript('opponentNoteHit', [note]);
+		stagesFunc(function(stage:BaseStage) { if(note.mustPress) stage.goodNoteHit(note); else stage.opponentNoteHit(note); });
+		var result:Dynamic = callOnLuas(noteHitCb(note), [notes.members.indexOf(note), Math.abs(note.noteData), note.noteType, note.isSustainNote]);
+		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript(noteHitCb(note), [note]);
 
 		if (!note.isSustainNote) invalidateNote(note);
 	}
@@ -3432,8 +3437,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		var leData:Int = Math.round(Math.abs(note.noteData));
 		var leType:String = note.noteType;
 
-		var result:Dynamic = callOnLuas('goodNoteHitPre', [notes.members.indexOf(note), leData, leType, isSus]);
-		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) result = callOnHScript('goodNoteHitPre', [note]);
+		var result:Dynamic = callOnLuas(noteHitCb(note, true), [notes.members.indexOf(note), leData, leType, isSus]);
+		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) result = callOnHScript(noteHitCb(note, true), [note]);
 
 		if(result == LuaUtils.Function_Stop) return;
 
@@ -3533,9 +3538,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			if(!note.noteSplashData.disabled && !note.isSustainNote) spawnNoteSplashOnNote(note);
 		}
 
-		stagesFunc(function(stage:BaseStage) stage.goodNoteHit(note));
-		var result:Dynamic = callOnLuas('goodNoteHit', [notes.members.indexOf(note), leData, leType, isSus]);
-		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript('goodNoteHit', [note]);
+		stagesFunc(function(stage:BaseStage) { if(note.mustPress) stage.goodNoteHit(note); else stage.opponentNoteHit(note); });
+		var result:Dynamic = callOnLuas(noteHitCb(note), [notes.members.indexOf(note), leData, leType, isSus]);
+		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript(noteHitCb(note), [note]);
 		if(!note.isSustainNote) invalidateNote(note);
 	}
 
