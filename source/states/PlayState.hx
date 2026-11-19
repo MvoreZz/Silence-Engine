@@ -231,18 +231,26 @@ class PlayState extends MusicBeatState
 	public function getPlayerVocals():FlxSound
 		return (playsAsBF() || opponentVocals == null || opponentVocals.length <= 0) ? vocals : opponentVocals;
 
-	// The health bar is already mirrored in Play Opponent (healthBar.leftToRight = !playsAsBF()),
-	// so health must NOT be inverted here too. Your hits always add, your misses always subtract.
 	/** Script callbacks follow the CHART side, not who is playing:
 	 *  BF notes (mustPress) -> goodNoteHit*, Dad notes -> opponentNoteHit*. Same as normal play, in every mode. */
 	inline function noteHitCb(note:Note, pre:Bool = false):String
 		return (note.mustPress ? 'goodNoteHit' : 'opponentNoteHit') + (pre ? 'Pre' : '');
 
+	// `health` is ALWAYS from BF's point of view (high = BF winning), in every mode. That is what
+	// scripts expect (drain on opponentNoteHit, healing on goodNoteHit, setProperty('health')...).
+	// addHealth/subsHealth are for the PLAYER: when you play Dad, your gain = BF's health goes down.
 	public function addHealth(v:Float):Float
-		return health += v;
+		return playsAsBF() ? (health += v) : (health -= v);
 
 	public function subsHealth(v:Float):Float
-		return health -= v;
+		return playsAsBF() ? (health -= v) : (health += v);
+
+	inline function healthMax():Float
+		return (healthBar != null && healthBar.bounds.max != null) ? healthBar.bounds.max : 2;
+
+	/** Has the PLAYER lost all health? (Dad player: BF's health at max) */
+	inline function playerHealthEmpty():Bool
+		return playsAsBF() ? (health <= 0) : (health >= healthMax());
 
 	public var practiceMode:Bool = false;
 	public var pressMissDamage:Float = 0.05;
@@ -616,8 +624,7 @@ class PlayState extends MusicBeatState
 			return health;
 		}, 0, 2);
 		healthBar.screenCenter(X);
-		// Drain direction matches who you play as (opponent mode flips visual side)
-		healthBar.leftToRight = !playsAsBF();
+		healthBar.leftToRight = false; // health is always BF-perspective, bar is never mirrored
 		healthBar.scrollFactor.set();
 		healthBar.visible = !ClientPrefs.data.hideHud;
 		healthBar.alpha = ClientPrefs.data.healthBarAlpha;
@@ -819,8 +826,7 @@ class PlayState extends MusicBeatState
 
 	public function reloadHealthBarColors() {
 		if (healthBar == null) return;
-		// Drain direction only when Play Opponent; colors stay dad | bf (not swapped)
-		healthBar.leftToRight = !playsAsBF();
+		healthBar.leftToRight = false;
 		healthBar.setColors(
 			FlxColor.fromRGB(dad.healthColorArray[0], dad.healthColorArray[1], dad.healthColorArray[2]),
 			FlxColor.fromRGB(boyfriend.healthColorArray[0], boyfriend.healthColorArray[1], boyfriend.healthColorArray[2])
@@ -832,6 +838,7 @@ class PlayState extends MusicBeatState
 			case 0:
 				if(!boyfriendMap.exists(newCharacter)) {
 					var newBoyfriend:Character = new Character(0, 0, newCharacter, true);
+					newBoyfriend.isPlayer = playsAsBF();
 					boyfriendMap.set(newCharacter, newBoyfriend);
 					boyfriendGroup.add(newBoyfriend);
 					startCharacterPos(newBoyfriend);
@@ -842,6 +849,7 @@ class PlayState extends MusicBeatState
 			case 1:
 				if(!dadMap.exists(newCharacter)) {
 					var newDad:Character = new Character(0, 0, newCharacter);
+					newDad.isPlayer = !playsAsBF();
 					dadMap.set(newCharacter, newDad);
 					dadGroup.add(newDad);
 					startCharacterPos(newDad, true);
@@ -1986,7 +1994,7 @@ class PlayState extends MusicBeatState
 		// RESET = Quick Game Over Screen
 		if (!ClientPrefs.data.noReset && controls.RESET && canReset && !inCutscene && startedCountdown && !endingSong)
 		{
-			health = 0;
+			health = playsAsBF() ? 0 : healthMax();
 			trace("RESET = True");
 		}
 		doDeathCheck();
@@ -2167,17 +2175,8 @@ class PlayState extends MusicBeatState
 		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
 		healthBar.percent = (newPercent != null ? newPercent : 0);
 
-		if (opponentMode)
-		{
-			// Playing as opponent: high health = dad winning, bf losing
-			iconP1.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0;
-			iconP2.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0;
-		}
-		else
-		{
-			iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; // player losing under 20%
-			iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; // opponent losing over 80%
-		}
+		iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; // BF losing under 20%
+		iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; // Dad losing over 80%
 		return health;
 	}
 
@@ -2253,13 +2252,13 @@ class PlayState extends MusicBeatState
 	public var isDead:Bool = false; //Don't mess with this on Lua!!!
 	public var gameOverTimer:FlxTimer;
 	function doDeathCheck(?skipHealthCheck:Bool = false) {
-		if (((skipHealthCheck && instakillOnMiss) || health <= 0) && !practiceMode && !isDead && gameOverTimer == null)
+		if (((skipHealthCheck && instakillOnMiss) || playerHealthEmpty()) && !practiceMode && !isDead && gameOverTimer == null)
 		{
 			var ret:Dynamic = callOnScripts('onGameOver', null, true);
 			if(ret != LuaUtils.Function_Stop)
 			{
 				FlxG.animationTimeScale = 1;
-				boyfriend.stunned = true;
+				getSelfChar().stunned = true;
 				deathCounter++;
 
 				paused = true;
@@ -2286,7 +2285,7 @@ class PlayState extends MusicBeatState
 						vocals.stop();
 						opponentVocals.stop();
 						FlxG.sound.music.stop();
-						openSubState(new GameOverSubstate(boyfriend));
+						openSubState(new GameOverSubstate(getSelfChar()));
 						gameOverTimer = null;
 					});
 				}
@@ -2295,7 +2294,7 @@ class PlayState extends MusicBeatState
 					vocals.stop();
 					opponentVocals.stop();
 					FlxG.sound.music.stop();
-					openSubState(new GameOverSubstate(boyfriend));
+					openSubState(new GameOverSubstate(getSelfChar()));
 				}
 
 				// MusicBeatState.switchState(new GameOverState(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y));
@@ -2750,12 +2749,12 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			notes.forEachAlive(function(daNote:Note)
 			{
 				if(daNote.strumTime < songLength - Conductor.safeZoneOffset)
-					health -= 0.05 * healthLoss;
+					subsHealth(0.05 * healthLoss);
 			});
 			for (daNote in unspawnNotes)
 			{
 				if(daNote != null && daNote.strumTime < songLength - Conductor.safeZoneOffset)
-					health -= 0.05 * healthLoss;
+					subsHealth(0.05 * healthLoss);
 			}
 
 			if(doDeathCheck()) {
