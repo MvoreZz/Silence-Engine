@@ -21,7 +21,7 @@ import states.TitleState;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
 	public var fpsRework:Bool = false;
-	public var smoothHealthBar:Bool = true; // lerp health bar
+	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
 	public var graphicsQuality:String = 'Low'; // set by analyzeDeviceQuality on load unless Custom
 	
@@ -235,8 +235,19 @@ class ClientPrefs {
 		#end
 
 		var fps:Int = data.unlimitedFPS ? 999 : data.framerate;
-		if (data.fpsRework)
-			FlxG.stage.window.frameRate = fps;
+		// Unlimited FPS: keep update/draw high and fixed — never sync to current FPS (that causes slow-mo)
+		if (data.unlimitedFPS)
+		{
+			try { FlxG.stage.window.frameRate = 999; } catch (e:Dynamic) {}
+			FlxG.updateFramerate = 999;
+			FlxG.drawFramerate = 999;
+		}
+		else if (data.fpsRework)
+		{
+			try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
+			FlxG.updateFramerate = fps;
+			FlxG.drawFramerate = fps;
+		}
 		else
 		{
 			if (fps > FlxG.drawFramerate)
