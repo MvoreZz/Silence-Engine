@@ -11,6 +11,7 @@ import objects.MusicPlayer;
 
 import options.GameplayChangersSubstate;
 import substates.ResetScoreSubState;
+import substates.ResumePromptSubState;
 
 import flixel.math.FlxMath;
 import flixel.util.FlxDestroyUtil;
@@ -517,21 +518,38 @@ class FreeplayState extends MusicBeatState
 				return;
 			}
 
-			@:privateAccess
-			if(PlayState._lastLoadedModDirectory != Mods.currentModDirectory)
+			// If a mid-song save exists for this chart, ask before entering PlayState
+			var rd:Dynamic = null;
+			try { rd = PlayState.loadResume(); } catch (e:Dynamic) {}
+			if (rd != null
+				&& Std.string(rd.song) == songLowercase
+				&& Std.int(rd.difficulty) == curDifficulty
+				&& rd.position != null && rd.position > 5000)
 			{
-				trace('CHANGED MOD DIRECTORY, RELOADING STUFF');
-				Paths.freeGraphicsFromMemory();
+				openSubState(new ResumePromptSubState(songs[curSelected].songName, function() {
+					// YES — restore progress then enter
+					try {
+						PlayState.startOnTime = rd.position;
+						PlayState.resumeApplyScore = Std.int(rd.score);
+						PlayState.resumeApplyMisses = Std.int(rd.misses);
+						PlayState.resumeApplyHits = Std.int(rd.hits);
+						PlayState.resumeApplyCombo = Std.int(rd.combo);
+						PlayState.resumeApplyHealth = rd.health;
+					} catch (e:Dynamic) {}
+					PlayState.clearResume();
+					enterPlayStateFromFreeplay();
+				}, function() {
+					// NO — start clean
+					PlayState.startOnTime = 0;
+					PlayState.resumeApplyScore = -1;
+					PlayState.clearResume();
+					enterPlayStateFromFreeplay();
+				}));
+				removeTouchPad();
+				return;
 			}
-			LoadingState.prepareToSong();
-			LoadingState.loadAndSwitchState(new PlayState());
-			#if !SHOW_LOADING_SCREEN FlxG.sound.music.stop(); #end
-			stopMusicPlay = true;
 
-			destroyFreeplayVocals();
-			#if (MODS_ALLOWED && DISCORD_ALLOWED)
-			DiscordClient.loadModRPC();
-			#end
+			enterPlayStateFromFreeplay();
 		}
 		else if((controls.RESET || (touchPad != null && touchPad.buttonY != null && touchPad.buttonY.justPressed)) && player != null && !player.playingMusic)
 		{
@@ -561,7 +579,27 @@ class FreeplayState extends MusicBeatState
 		return null;
 	}
 
-	public static function destroyFreeplayVocals() {
+	public static 
+	function enterPlayStateFromFreeplay():Void
+	{
+		@:privateAccess
+		if(PlayState._lastLoadedModDirectory != Mods.currentModDirectory)
+		{
+			trace('CHANGED MOD DIRECTORY, RELOADING STUFF');
+			Paths.freeGraphicsFromMemory();
+		}
+		LoadingState.prepareToSong();
+		LoadingState.loadAndSwitchState(new PlayState());
+		#if !SHOW_LOADING_SCREEN FlxG.sound.music.stop(); #end
+		stopMusicPlay = true;
+
+		destroyFreeplayVocals();
+		#if (MODS_ALLOWED && DISCORD_ALLOWED)
+		DiscordClient.loadModRPC();
+		#end
+	}
+
+	function destroyFreeplayVocals() {
 		if(vocals != null) vocals.stop();
 		vocals = FlxDestroyUtil.destroy(vocals);
 
