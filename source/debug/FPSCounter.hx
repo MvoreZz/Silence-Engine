@@ -2,14 +2,12 @@ package debug;
 
 import flixel.FlxG;
 import openfl.Lib;
-import haxe.Timer;
 import openfl.text.TextField;
 import openfl.text.TextFormat;
-import openfl.system.System as OpenFlSystem;
 import lime.system.System as LimeSystem;
 
 /**
-	Simple FPS / memory overlay with peak memory and script counts.
+	Simple FPS / memory overlay. Does not change updateFramerate (prevents slow-mo).
 **/
 class FPSCounter extends TextField
 {
@@ -17,7 +15,6 @@ class FPSCounter extends TextField
 	public var memoryMegas(get, never):Float;
 	public var peakMemoryMegas(default, null):Float = 0;
 
-	@:noCompletion private var times:Array<Float>;
 	@:noCompletion private var prevTime:Int;
 	@:noCompletion private var updateTime:Int;
 	@:noCompletion private var framesCount:Int;
@@ -44,7 +41,6 @@ class FPSCounter extends TextField
 		multiline = true;
 		text = "FPS: ";
 
-		times = [];
 		prevTime = Lib.getTimer();
 		updateTime = prevTime + 500;
 		framesCount = 0;
@@ -59,7 +55,6 @@ class FPSCounter extends TextField
 		var gfx:String = '';
 		try
 		{
-			// Show device tier, not "Custom"
 			var q:String = ClientPrefs.data.graphicsQuality;
 			if (q == null || q == 'Custom')
 				q = ClientPrefs.analyzeDeviceQuality();
@@ -104,27 +99,6 @@ class FPSCounter extends TextField
 
 	private override function __enterFrame(deltaTime:Float):Void
 	{
-		// Unlimited FPS must NOT retarget updateFramerate to currentFPS (causes slow-mo)
-		if (ClientPrefs.data.unlimitedFPS)
-		{
-			try
-			{
-				if (FlxG.stage.window.frameRate < 200)
-					FlxG.stage.window.frameRate = 999;
-			}
-			catch (e:Dynamic) {}
-			if (FlxG.updateFramerate < 200)
-			{
-				FlxG.updateFramerate = 999;
-				FlxG.drawFramerate = 999;
-			}
-		}
-		else if (ClientPrefs.data.fpsRework)
-		{
-			if (FlxG.stage.window.frameRate != ClientPrefs.data.framerate && FlxG.stage.window.frameRate != FlxG.game.focusLostFramerate)
-				FlxG.stage.window.frameRate = ClientPrefs.data.framerate;
-		}
-
 		var currentTime = Lib.getTimer();
 		framesCount++;
 		if (currentTime >= updateTime)
@@ -137,7 +111,6 @@ class FPSCounter extends TextField
 			prevTime = currentTime;
 			updateTime = currentTime + 500;
 		}
-
 		updateText();
 	}
 
