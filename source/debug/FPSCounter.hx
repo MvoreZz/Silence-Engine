@@ -9,35 +9,18 @@ import openfl.system.System as OpenFlSystem;
 import lime.system.System as LimeSystem;
 
 /**
-	The FPS class provides an easy-to-use monitor to display
-	the current frame rate of an OpenFL project
+	Simple FPS / memory overlay with peak memory and script counts.
 **/
-#if cpp
-#if windows
-@:cppFileCode('#include <windows.h>')
-#elseif (ios || mac)
-@:cppFileCode('#include <mach-o/arch.h>')
-#else
-@:headerInclude('sys/utsname.h')
-#end
-#end
 class FPSCounter extends TextField
 {
-	/**
-		The current frame rate, expressed using frames-per-second
-	**/
 	public var currentFPS(default, null):Int;
-
-	/**
-		The current memory usage (WARNING: this is NOT your total program memory usage, rather it shows the garbage collector memory)
-	**/
 	public var memoryMegas(get, never):Float;
+	public var peakMemoryMegas(default, null):Float = 0;
 
 	@:noCompletion private var times:Array<Float>;
-	@:noCompletion private var lastFramerateUpdateTime:Float;
+	@:noCompletion private var prevTime:Int;
 	@:noCompletion private var updateTime:Int;
 	@:noCompletion private var framesCount:Int;
-	@:noCompletion private var prevTime:Int;
 
 	public var os:String = '';
 
@@ -47,137 +30,130 @@ class FPSCounter extends TextField
 
 		var ver:String = LimeSystem.platformVersion;
 		if (ver != null && ver != '' && ver != LimeSystem.platformName)
-			os = '\nOS: ${LimeSystem.platformName} $ver';
+			os = LimeSystem.platformName + ' ' + ver;
 		else
-			os = '\nOS: ${LimeSystem.platformName}';
+			os = LimeSystem.platformName != null ? LimeSystem.platformName : '';
 
 		positionFPS(x, y);
 
 		currentFPS = 0;
 		selectable = false;
 		mouseEnabled = false;
-		defaultTextFormat = new TextFormat("_sans", 14, color);
+		defaultTextFormat = new TextFormat("_sans", 13, color);
 		width = FlxG.width;
 		multiline = true;
 		text = "FPS: ";
 
 		times = [];
-		lastFramerateUpdateTime = Timer.stamp();
 		prevTime = Lib.getTimer();
 		updateTime = prevTime + 500;
+		framesCount = 0;
 	}
 
-
-	public dynamic function updateText():Void // so people can override it in hscript
+	public dynamic function updateText():Void
 	{
-		text = 
-		'FPS: $currentFPS' + 
-		'\nMemory: ${flixel.util.FlxStringUtil.formatBytes(memoryMegas)}' +
-		os;
+		var mem:Float = memoryMegas;
+		if (mem > peakMemoryMegas)
+			peakMemoryMegas = mem;
 
+		var gfx:String = '';
+		try
+		{
+			// Show device tier, not "Custom"
+			var q:String = ClientPrefs.data.graphicsQuality;
+			if (q == null || q == 'Custom')
+				q = ClientPrefs.analyzeDeviceQuality();
+			gfx = q;
+		}
+		catch (e:Dynamic) { gfx = ''; }
+
+		var luaN:Int = 0;
+		var hxN:Int = 0;
+		try
+		{
+			if (states.PlayState.instance != null)
+			{
+				#if LUA_ALLOWED
+				if (states.PlayState.instance.luaArray != null)
+					luaN = states.PlayState.instance.luaArray.length;
+				#end
+				#if HSCRIPT_ALLOWED
+				if (states.PlayState.instance.hscriptArray != null)
+					hxN = states.PlayState.instance.hscriptArray.length;
+				#end
+			}
+		}
+		catch (e:Dynamic) {}
+
+		var lines:Array<String> = [];
+		lines.push('FPS: $currentFPS');
+		lines.push('Mem: ${flixel.util.FlxStringUtil.formatBytes(mem)}');
+		lines.push('Peak: ${flixel.util.FlxStringUtil.formatBytes(peakMemoryMegas)}');
+		if (gfx != null && gfx.length > 0)
+			lines.push('GPU: ' + gfx);
+		if (luaN > 0 || hxN > 0)
+			lines.push(luaN + ' lua | ' + hxN + ' haxe');
+		if (os != null && os.length > 0)
+			lines.push(os);
+
+		text = lines.join('\n');
 		textColor = 0xFFFFFFFF;
-		if (currentFPS < FlxG.stage.window.frameRate * 0.5)
+		if (currentFPS < 30)
 			textColor = 0xFFFF0000;
 	}
 
-	var deltaTimeout:Float = 0.0;
 	private override function __enterFrame(deltaTime:Float):Void
 	{
-		if (ClientPrefs.data.fpsRework)
+		// Unlimited FPS must NOT retarget updateFramerate to currentFPS (causes slow-mo)
+		if (ClientPrefs.data.unlimitedFPS)
 		{
-			// Flixel keeps reseting this to 60 on focus gained
-			if (FlxG.stage.window.frameRate != ClientPrefs.data.framerate && FlxG.stage.window.frameRate != FlxG.game.focusLostFramerate)
-				FlxG.stage.window.frameRate = ClientPrefs.data.framerate;
-
-			var currentTime = openfl.Lib.getTimer();
-			framesCount++;
-
-			if (currentTime >= updateTime)
+			try
 			{
-				var elapsed = currentTime - prevTime;
-				currentFPS = Math.ceil((framesCount * 1000) / elapsed);
-				framesCount = 0;
-				prevTime = currentTime;
-				updateTime = currentTime + 500;
+				if (FlxG.stage.window.frameRate < 200)
+					FlxG.stage.window.frameRate = 999;
 			}
-
-			// Set Update and Draw framerate to the current FPS every 1.5 second to prevent "slowness" issue
-			if ((FlxG.updateFramerate >= currentFPS + 5 || FlxG.updateFramerate <= currentFPS - 5)
-				&& haxe.Timer.stamp() - lastFramerateUpdateTime >= 1.5
-				&& currentFPS >= 30)
+			catch (e:Dynamic) {}
+			if (FlxG.updateFramerate < 200)
 			{
-				FlxG.updateFramerate = FlxG.drawFramerate = currentFPS;
-				lastFramerateUpdateTime = haxe.Timer.stamp();
+				FlxG.updateFramerate = 999;
+				FlxG.drawFramerate = 999;
 			}
 		}
-		else
+		else if (ClientPrefs.data.fpsRework)
 		{
-			final now:Float = haxe.Timer.stamp() * 1000;
-			times.push(now);
-			while (times[0] < now - 1000)
-				times.shift();
-			// prevents the overlay from updating every frame, why would you need to anyways @crowplexus
-			if (deltaTimeout < 50)
-			{
-				deltaTimeout += deltaTime;
-				return;
-			}
+			if (FlxG.stage.window.frameRate != ClientPrefs.data.framerate && FlxG.stage.window.frameRate != FlxG.game.focusLostFramerate)
+				FlxG.stage.window.frameRate = ClientPrefs.data.framerate;
+		}
 
-			currentFPS = times.length < FlxG.updateFramerate ? times.length : FlxG.updateFramerate;
-			deltaTimeout = 0.0;
+		var currentTime = Lib.getTimer();
+		framesCount++;
+		if (currentTime >= updateTime)
+		{
+			var elapsed = currentTime - prevTime;
+			if (elapsed < 1) elapsed = 1;
+			currentFPS = Math.ceil((framesCount * 1000) / elapsed);
+			if (currentFPS < 0) currentFPS = 0;
+			framesCount = 0;
+			prevTime = currentTime;
+			updateTime = currentTime + 500;
 		}
 
 		updateText();
 	}
 
 	inline function get_memoryMegas():Float
+	{
+		#if cpp
 		return cpp.vm.Gc.memInfo64(cpp.vm.Gc.MEM_INFO_USAGE);
+		#else
+		return openfl.system.System.totalMemory;
+		#end
+	}
 
-	public inline function positionFPS(X:Float, Y:Float, ?scale:Float = 1){
+	public inline function positionFPS(X:Float, Y:Float, ?scale:Float = 1)
+	{
 		scaleX = scaleY = #if android (scale > 1 ? scale : 1) #else (scale < 1 ? scale : 1) #end;
 		x = FlxG.game.x + X;
 		y = FlxG.game.y + Y;
 	}
-
-	#if cpp
-	#if windows
-	@:functionCode('
-		SYSTEM_INFO osInfo;
-
-		GetSystemInfo(&osInfo);
-
-		switch(osInfo.wProcessorArchitecture)
-		{
-			case 9:
-				return ::String("x86_64");
-			case 5:
-				return ::String("ARM");
-			case 12:
-				return ::String("ARM64");
-			case 6:
-				return ::String("IA-64");
-			case 0:
-				return ::String("x86");
-			default:
-				return ::String("Unknown");
-		}
-	')
-	#elseif (ios || mac)
-	@:functionCode('
-		const NXArchInfo *archInfo = NXGetLocalArchInfo();
-    	return ::String(archInfo == NULL ? "Unknown" : archInfo->name);
-	')
-	#else
-	@:functionCode('
-		struct utsname osInfo{};
-		uname(&osInfo);
-		return ::String(osInfo.machine);
-	')
-	#end
-	@:noCompletion
-	private function getArch():String
-	{
-		return "Unknown";
-	}
-	#end
 }
