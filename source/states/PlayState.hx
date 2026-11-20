@@ -206,6 +206,11 @@ class PlayState extends MusicBeatState
 	public var opponentMode:Bool = false;
 
 	public static var pendingResume:Bool = false;
+	public static var resumeApplyScore:Int = -1;
+	public static var resumeApplyMisses:Int = -1;
+	public static var resumeApplyHits:Int = -1;
+	public static var resumeApplyCombo:Int = -1;
+	public static var resumeApplyHealth:Float = -1;
 	public static var resumeData:Null<{song:String, difficulty:Int, position:Float, score:Int, misses:Int, hits:Int, health:Float, combo:Int}> = null;
 
 	public static function clearResume():Void
@@ -395,6 +400,19 @@ class PlayState extends MusicBeatState
 
 		// for lua
 		instance = this;
+		// Apply resume chosen in Freeplay (if any)
+		if (resumeApplyScore >= 0)
+		{
+			songScore = resumeApplyScore;
+			songMisses = (resumeApplyMisses >= 0) ? resumeApplyMisses : 0;
+			songHits = (resumeApplyHits >= 0) ? resumeApplyHits : 0;
+			combo = (resumeApplyCombo >= 0) ? resumeApplyCombo : 0;
+			if (resumeApplyHealth >= 0) health = resumeApplyHealth;
+			resumeApplyScore = resumeApplyMisses = resumeApplyHits = resumeApplyCombo = -1;
+			resumeApplyHealth = -1;
+		}
+		clearResume();
+
 
 		PauseSubState.songName = null; //Reset to default
 		playbackRate = ClientPrefs.getGameplaySetting('songspeed');
@@ -792,7 +810,7 @@ class PlayState extends MusicBeatState
 		holdSplash.alpha = 0.0001;
 		grpHoldSplashes.add(holdSplash);
 
-		// pause button (top-right P)
+		// P-Slice style pause button (top-right P)
 		addTouchPad('NONE', 'P');
 		addTouchPadCamera();
 
@@ -1147,38 +1165,16 @@ class PlayState extends MusicBeatState
 		Paths.sound('introGo' + introSoundsSuffix);
 	}
 
+
+	function tryOfferResume():Void
+	{
+		// Disabled: previous prompt froze PlayState (no YES/NO, countdown never started).
+		clearResume();
+	}
+
 	public function startCountdown()
 	{
-		// Mid-song resume prompt (once per entry) — pause countdown until answered
-		if (!pendingResume)
-		{
-			var rd:Dynamic = loadResume();
-			if (rd != null && rd.song == songName && Std.int(rd.difficulty) == storyDifficulty && rd.position > 5000)
-			{
-				pendingResume = true;
-				persistentUpdate = false;
-				openSubState(new substates.ResumePromptSubState(SONG.song, function() {
-					try {
-						songScore = Std.int(rd.score);
-						songMisses = Std.int(rd.misses);
-						songHits = Std.int(rd.hits);
-						combo = Std.int(rd.combo);
-						health = rd.health;
-						startOnTime = rd.position;
-					} catch (e:Dynamic) {}
-					clearResume();
-					pendingResume = true;
-					persistentUpdate = true;
-					startCountdown();
-				}, function() {
-					clearResume();
-					pendingResume = true;
-					persistentUpdate = true;
-					startCountdown();
-				}));
-				return false;
-			}
-		}
+		// Resume prompt is handled in tryOfferResume() after the state is fully ready (avoids freeze).
 
 		if(startedCountdown) {
 			callOnScripts('onStartCountdown');
