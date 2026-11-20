@@ -57,7 +57,51 @@ class ShaderFunctions
 			#end
 			return false;
 		});
-		Lua_helper.add_callback(lua, "removeSpriteShader", function(obj:String) {
+		
+		// 0.6.3 / 0.7.3 style camera shader helpers (safe no-ops if unsupported)
+		Lua_helper.add_callback(lua, "addShaderToCamera", function(cam:String, shader:String) {
+			#if (!flash && sys)
+			try {
+				if (!funk.runtimeShaders.exists(shader) && !funk.initLuaShader(shader))
+					return false;
+				var arr = funk.runtimeShaders.get(shader);
+				if (arr == null) return false;
+				var camera = LuaUtils.cameraFromString(cam);
+				if (camera == null) camera = FlxG.camera;
+				var sh:FlxRuntimeShader = null;
+				try { sh = new shaders.ErrorHandledShader.ErrorHandledRuntimeShader(shader, arr[0], arr[1]); }
+				catch (e:Dynamic) { sh = new FlxRuntimeShader(arr[0], arr[1]); }
+				if (camera.filters == null) camera.filters = [];
+				camera.filters.push(new openfl.filters.ShaderFilter(sh));
+				return true;
+			} catch (e:Dynamic) { return false; }
+			#end
+			return false;
+		});
+		Lua_helper.add_callback(lua, "removeShaderFromCamera", function(cam:String) {
+			#if (!flash && sys)
+			try {
+				var camera = LuaUtils.cameraFromString(cam);
+				if (camera == null) camera = FlxG.camera;
+				camera.filters = [];
+				return true;
+			} catch (e:Dynamic) { return false; }
+			#end
+			return false;
+		});
+		Lua_helper.add_callback(lua, "clearShaderFromCamera", function(cam:String) {
+			#if (!flash && sys)
+			try {
+				var camera = LuaUtils.cameraFromString(cam);
+				if (camera == null) camera = FlxG.camera;
+				camera.filters = [];
+				return true;
+			} catch (e:Dynamic) { return false; }
+			#end
+			return false;
+		});
+
+Lua_helper.add_callback(lua, "removeSpriteShader", function(obj:String) {
 			var split:Array<String> = obj.split('.');
 			var leObj:FlxSprite = LuaUtils.getObjectDirectly(split[0]);
 			if(split.length > 1) {
