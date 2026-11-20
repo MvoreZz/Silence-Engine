@@ -38,22 +38,25 @@ class Paths
 	// haya I love you for the base cache dump I took to the max
 	public static function clearUnusedMemory()
 	{
-		// clear non local assets in the tracked assets list
-		for (key in currentTrackedAssets.keys())
+		try
 		{
-			// if it is not currently contained within the used local assets
-			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key))
+			if (currentTrackedAssets == null) return;
+			var keys:Array<String> = [for (k in currentTrackedAssets.keys()) k];
+			for (key in keys)
 			{
-				destroyGraphic(currentTrackedAssets.get(key)); // get rid of the graphic
-				currentTrackedAssets.remove(key); // and remove the key from local cache map
+				if (key == null) continue;
+				if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key))
+				{
+					try { destroyGraphic(currentTrackedAssets.get(key)); } catch (e:Dynamic) {}
+					try { currentTrackedAssets.remove(key); } catch (e:Dynamic) {}
+				}
 			}
+			System.gc();
+			#if cpp
+			try { cpp.NativeGc.run(true); } catch (e:Dynamic) {}
+			#end
 		}
-
-		// run the garbage collector for good measure lmfao
-		System.gc();
-		#if cpp
-		cpp.NativeGc.run(true);
-		#end
+		catch (e:Dynamic) {}
 	}
 
 	// define the locally tracked assets
@@ -62,25 +65,40 @@ class Paths
 	@:access(flixel.system.frontEnds.BitmapFrontEnd._cache)
 	public static function clearStoredMemory()
 	{
-		// clear anything not in the tracked assets list
-		for (key in FlxG.bitmap._cache.keys())
+		try
 		{
-			if (!currentTrackedAssets.exists(key))
-				destroyGraphic(FlxG.bitmap.get(key));
-		}
-
-		// clear all sounds that are cached
-		for (key => asset in currentTrackedSounds)
-		{
-			if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key) && asset != null)
+			if (FlxG.bitmap != null && FlxG.bitmap._cache != null)
 			{
-				Assets.cache.clear(key);
-				currentTrackedSounds.remove(key);
+				var bkeys:Array<String> = [for (k in FlxG.bitmap._cache.keys()) k];
+				for (key in bkeys)
+				{
+					if (key == null) continue;
+					if (currentTrackedAssets == null || !currentTrackedAssets.exists(key))
+					{
+						try { destroyGraphic(FlxG.bitmap.get(key)); } catch (e:Dynamic) {}
+					}
+				}
 			}
+			if (currentTrackedSounds != null)
+			{
+				var skeys:Array<String> = [for (k in currentTrackedSounds.keys()) k];
+				for (key in skeys)
+				{
+					if (key == null) continue;
+					var asset = currentTrackedSounds.get(key);
+					if (!localTrackedAssets.contains(key) && !dumpExclusions.contains(key) && asset != null)
+					{
+						try { Assets.cache.clear(key); } catch (e:Dynamic) {}
+						try { currentTrackedSounds.remove(key); } catch (e:Dynamic) {}
+					}
+				}
+			}
+			localTrackedAssets = [];
+			#if !html5
+			try { openfl.Assets.cache.clear("songs"); } catch (e:Dynamic) {}
+			#end
 		}
-		// flags everything to be cleared out next unused memory clear
-		localTrackedAssets = [];
-		#if !html5 openfl.Assets.cache.clear("songs"); #end
+		catch (e:Dynamic) {}
 	}
 
 	public static function freeGraphicsFromMemory()
@@ -140,10 +158,15 @@ class Paths
 
 	inline static function destroyGraphic(graphic:FlxGraphic)
 	{
-		// free some gpu memory
-		if (graphic != null && graphic.bitmap != null && graphic.bitmap.__texture != null)
-			graphic.bitmap.__texture.dispose();
-		FlxG.bitmap.remove(graphic);
+		if (graphic == null) return;
+		try
+		{
+			if (graphic.bitmap != null && graphic.bitmap.__texture != null)
+				graphic.bitmap.__texture.dispose();
+			if (FlxG.bitmap != null)
+				FlxG.bitmap.remove(graphic);
+		}
+		catch (e:Dynamic) {}
 	}
 
 	static public var currentLevel:String;
@@ -289,11 +312,22 @@ class Paths
 		return graph;
 	}
 
+	/** Fixed: do not pass Bool as parentfolder (broke custom_notetypes/*.txt → all notes looked default) */
 	inline static public function getTextFromFile(key:String, ?ignoreMods:Bool = false):String
 	{
-		var path:String = getPath(key, TEXT, !ignoreMods);
+		#if MODS_ALLOWED
+		if (!ignoreMods)
+		{
+			var modPath:String = modFolders(key);
+			if (FileSystem.exists(modPath))
+				return File.getContent(modPath);
+		}
+		#end
+		var path:String = getPath(key, TEXT, null, !ignoreMods);
 		#if sys
-		return (FileSystem.exists(path)) ? File.getContent(path) : null;
+		if (FileSystem.exists(path))
+			return File.getContent(path);
+		return null;
 		#else
 		return (OpenFlAssets.exists(path, TEXT)) ? Assets.getText(path) : null;
 		#end
