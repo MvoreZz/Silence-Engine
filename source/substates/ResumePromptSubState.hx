@@ -2,126 +2,156 @@ package substates;
 
 import flixel.FlxG;
 import flixel.FlxSprite;
-import flixel.FlxSubState;
-import flixel.text.FlxText;
-import flixel.tweens.FlxEase;
-import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
-import states.PlayState;
+import flixel.util.FlxDestroyUtil;
+import objects.HealthIcon;
 
 /**
- * "Continue where you left off?" prompt shown when a mid-song save exists.
- * YES = win icon path, NO = lose icon path (visual only).
+ * Continue-from-checkpoint prompt. UI mirrors ResetScoreSubState (YES/NO + icon).
  */
-class ResumePromptSubState extends FlxSubState
+class ResumePromptSubState extends MusicBeatSubstate
 {
-	var onYes:Void->Void;
-	var onNo:Void->Void;
-	var selected:Int = 0; // 0 = YES, 1 = NO
-	var yesTxt:FlxText;
-	var noTxt:FlxText;
-	var songLabel:String;
+	var bg:FlxSprite;
+	var alphabetArray:Array<Alphabet> = [];
+	var icon:HealthIcon;
+	var onYes:Bool = false;
+	var yesText:Alphabet;
+	var noText:Alphabet;
+	var yesCb:Void->Void;
+	var noCb:Void->Void;
 
-	public function new(songName:String, yesCb:Void->Void, noCb:Void->Void)
+	public function new(songName:String, yesCallback:Void->Void, noCallback:Void->Void)
 	{
 		super();
-		this.songLabel = songName;
-		this.onYes = yesCb;
-		this.onNo = noCb;
-	}
+		yesCb = yesCallback;
+		noCb = noCallback;
 
-	override public function create()
-	{
-		super.create();
-
-		var bg = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
-		bg.alpha = 0.7;
+		bg = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
+		bg.alpha = 0;
 		bg.scrollFactor.set();
 		add(bg);
 
-		var title = new FlxText(0, FlxG.height * 0.28, FlxG.width,
-			'CONTINUE "' + songLabel.toUpperCase() + '"\nFROM WHERE YOU LEFT OFF?',
-			32);
-		title.setFormat(Paths.font('vcr.ttf'), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		title.borderSize = 2;
-		title.scrollFactor.set();
-		add(title);
+		var tooLong:Float = (songName.length > 18) ? 0.8 : 1;
+		var text:Alphabet = new Alphabet(0, 180, "Continue from", true);
+		text.screenCenter(X);
+		alphabetArray.push(text);
+		text.alpha = 0;
+		add(text);
 
-		yesTxt = new FlxText(0, FlxG.height * 0.55, FlxG.width * 0.5, 'YES', 48);
-		yesTxt.setFormat(Paths.font('vcr.ttf'), 48, 0xFF66FF66, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		yesTxt.borderSize = 3;
-		yesTxt.scrollFactor.set();
-		add(yesTxt);
+		var text2:Alphabet = new Alphabet(0, text.y + 90, songName, true);
+		text2.scaleX = tooLong;
+		text2.screenCenter(X);
+		alphabetArray.push(text2);
+		text2.alpha = 0;
+		add(text2);
 
-		noTxt = new FlxText(FlxG.width * 0.5, FlxG.height * 0.55, FlxG.width * 0.5, 'NO', 48);
-		noTxt.setFormat(Paths.font('vcr.ttf'), 48, 0xFFFF6666, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		noTxt.borderSize = 3;
-		noTxt.scrollFactor.set();
-		add(noTxt);
+		var text3:Alphabet = new Alphabet(0, text2.y + 90, "where you left off?", true);
+		text3.screenCenter(X);
+		alphabetArray.push(text3);
+		text3.alpha = 0;
+		add(text3);
 
-		var hint = new FlxText(0, FlxG.height * 0.75, FlxG.width, 'Score, accuracy and progress will be restored if you continue.', 16);
-		hint.setFormat(Paths.font('vcr.ttf'), 16, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		hint.scrollFactor.set();
-		add(hint);
+		icon = new HealthIcon('bf');
+		icon.setGraphicSize(Std.int(icon.width * 0.8));
+		icon.updateHitbox();
+		icon.setPosition(text2.x + text2.width + 20, text2.y - 30);
+		icon.alpha = 0;
+		add(icon);
 
-		updateSel();
-		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
+		yesText = new Alphabet(0, text3.y + 150, 'Yes', true);
+		yesText.screenCenter(X);
+		yesText.x -= 200;
+		add(yesText);
+
+		noText = new Alphabet(0, text3.y + 150, 'No', true);
+		noText.screenCenter(X);
+		noText.x += 200;
+		add(noText);
+
+		updateOptions();
+
+		try {
+			addTouchPad('LEFT_RIGHT', 'A_B');
+			addTouchPadCamera();
+		} catch (e:Dynamic) {}
 	}
 
-	function updateSel()
+	override function update(elapsed:Float)
 	{
-		yesTxt.alpha = selected == 0 ? 1 : 0.45;
-		noTxt.alpha = selected == 1 ? 1 : 0.45;
-		yesTxt.scale.set(selected == 0 ? 1.15 : 1, selected == 0 ? 1.15 : 1);
-		noTxt.scale.set(selected == 1 ? 1.15 : 1, selected == 1 ? 1.15 : 1);
-	}
+		bg.alpha += elapsed * 1.5;
+		if (bg.alpha > 0.6) bg.alpha = 0.6;
 
-	override public function update(elapsed:Float)
-	{
-		super.update(elapsed);
+		for (spr in alphabetArray)
+			spr.alpha += elapsed * 2.5;
+		icon.alpha += elapsed * 2.5;
 
-		if (FlxG.keys.justPressed.LEFT || FlxG.keys.justPressed.A)
+		if (controls.UI_LEFT_P || controls.UI_RIGHT_P)
 		{
-			selected = 0;
-			updateSel();
+			FlxG.sound.play(Paths.sound('scrollMenu'), 1);
+			onYes = !onYes;
+			updateOptions();
 		}
-		if (FlxG.keys.justPressed.RIGHT || FlxG.keys.justPressed.D)
+		if (controls.BACK)
 		{
-			selected = 1;
-			updateSel();
+			FlxG.sound.play(Paths.sound('cancelMenu'), 1);
+			closeWith(false);
+			return;
 		}
-		if (FlxG.keys.justPressed.ENTER || FlxG.keys.justPressed.SPACE)
-			confirm();
-		if (FlxG.keys.justPressed.ESCAPE)
+		else if (controls.ACCEPT)
 		{
-			selected = 1;
-			confirm();
+			FlxG.sound.play(Paths.sound(onYes ? 'confirmMenu' : 'cancelMenu'), 1);
+			closeWith(onYes);
+			return;
 		}
 
 		#if mobile
-		for (touch in FlxG.touches.list)
+		if (touchPad == null)
 		{
-			if (!touch.justPressed) continue;
-			if (touch.x < FlxG.width * 0.5)
-			{
-				selected = 0;
-				confirm();
-			}
-			else
-			{
-				selected = 1;
-				confirm();
-			}
+			try {
+				addTouchPad('LEFT_RIGHT', 'A_B');
+				addTouchPadCamera();
+			} catch (e:Dynamic) {}
 		}
 		#end
+
+		super.update(elapsed);
 	}
 
-	function confirm()
+	function updateOptions()
 	{
+		var scales:Array<Float> = [0.75, 1];
+		var alphas:Array<Float> = [0.6, 1.25];
+		var confirmInt:Int = onYes ? 1 : 0;
+
+		yesText.alpha = alphas[confirmInt];
+		yesText.scale.set(scales[confirmInt], scales[confirmInt]);
+		noText.alpha = alphas[1 - confirmInt];
+		noText.scale.set(scales[1 - confirmInt], scales[1 - confirmInt]);
+		if (icon != null && icon.animation != null && icon.animation.curAnim != null)
+			icon.animation.curAnim.curFrame = confirmInt;
+	}
+
+	function closeWith(accepted:Bool)
+	{
+		try { controls.isInSubstate = false; } catch (e:Dynamic) {}
 		close();
-		if (selected == 0 && onYes != null)
-			onYes();
-		else if (onNo != null)
-			onNo();
+		if (accepted)
+		{
+			if (yesCb != null) yesCb();
+		}
+		else
+		{
+			if (noCb != null) noCb();
+		}
+	}
+
+	override function destroy()
+	{
+		bg = FlxDestroyUtil.destroy(bg);
+		alphabetArray = FlxDestroyUtil.destroyArray(alphabetArray);
+		icon = FlxDestroyUtil.destroy(icon);
+		yesText = FlxDestroyUtil.destroy(yesText);
+		noText = FlxDestroyUtil.destroy(noText);
+		super.destroy();
 	}
 }
