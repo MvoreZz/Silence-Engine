@@ -234,22 +234,17 @@ class ClientPrefs {
 		}
 		#end
 
-		var fps:Int = data.unlimitedFPS ? 999 : data.framerate;
-		// Unlimited FPS: keep update/draw high and fixed — never sync to current FPS (that causes slow-mo)
+		// Same logic as unlockFramerate engines: unlimited = 1000/1000, else normal framerate.
+		// Never retarget updateFramerate to the live FPS counter (that causes slow-mo).
 		if (data.unlimitedFPS)
 		{
-			try { FlxG.stage.window.frameRate = 999; } catch (e:Dynamic) {}
-			FlxG.updateFramerate = 999;
-			FlxG.drawFramerate = 999;
-		}
-		else if (data.fpsRework)
-		{
-			try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
-			FlxG.updateFramerate = fps;
-			FlxG.drawFramerate = fps;
+			FlxG.updateFramerate = 1000;
+			FlxG.drawFramerate = 1000;
+			try { FlxG.stage.window.frameRate = 1000; } catch (e:Dynamic) {}
 		}
 		else
 		{
+			var fps:Int = data.framerate;
 			if (fps > FlxG.drawFramerate)
 			{
 				FlxG.updateFramerate = fps;
@@ -260,6 +255,7 @@ class ClientPrefs {
 				FlxG.drawFramerate = fps;
 				FlxG.updateFramerate = fps;
 			}
+			try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
 		}
 
 		if(FlxG.save.data.gameplaySettings != null)
