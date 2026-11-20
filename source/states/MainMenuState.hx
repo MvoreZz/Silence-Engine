@@ -15,8 +15,8 @@ enum MainMenuColumn {
 class MainMenuState extends MusicBeatState
 {
 	public static var psychEngineVersion:String = '1.0.4'; // This is also used for Discord RPC
-	public static var silenceEngineName:String = 'Silence Engine'; //
-	public static var silenceEngineVersion:String = '1.1.0';
+	public static var silenceEngineName:String = 'Silence Engine'; 
+	public static var silenceEngineVersion:String = '1.2.0'; 
 	public static var curSelected:Int = 0;
 	public static var curColumn:MainMenuColumn = CENTER;
 	var allowMouse:Bool = true; //Turn this off to block mouse movement in menus
@@ -42,6 +42,10 @@ class MainMenuState extends MusicBeatState
 	static var showOutdatedWarning:Bool = true;
 	override function create()
 	{
+		#if (sys && MODS_ALLOWED)
+		try { backend.ModZipExtractor.run(); } catch (e:Dynamic) {}
+		#end
+
 		if (ClientPrefs.data.legacyMainMenu)
 		{
 			MusicBeatState.switchState(new LegacyMainMenuState());
@@ -154,6 +158,7 @@ class MainMenuState extends MusicBeatState
 		#end
 
 		#if CHECK_FOR_UPDATES
+		// Compare against engine version (not stock Psych string mismatch)
 		if (showOutdatedWarning && ClientPrefs.data.checkForUpdates)
 		{
 			var remote:String = substates.OutdatedSubState.updateVersion;
