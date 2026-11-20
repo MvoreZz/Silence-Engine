@@ -21,7 +21,7 @@ import states.TitleState;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
 	public var fpsRework:Bool = false;
-	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
+	public var smoothHealthBar:Bool = true; // lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
 	public var graphicsQuality:String = 'Low'; // set by analyzeDeviceQuality on load unless Custom
 	
@@ -234,29 +234,7 @@ class ClientPrefs {
 		}
 		#end
 
-		// Same logic as unlockFramerate engines: unlimited = 1000/1000, else normal framerate.
-		// Never retarget updateFramerate to the live FPS counter (that causes slow-mo).
-		if (data.unlimitedFPS)
-		{
-			FlxG.updateFramerate = 1000;
-			FlxG.drawFramerate = 1000;
-			try { FlxG.stage.window.frameRate = 1000; } catch (e:Dynamic) {}
-		}
-		else
-		{
-			var fps:Int = data.framerate;
-			if (fps > FlxG.drawFramerate)
-			{
-				FlxG.updateFramerate = fps;
-				FlxG.drawFramerate = fps;
-			}
-			else
-			{
-				FlxG.drawFramerate = fps;
-				FlxG.updateFramerate = fps;
-			}
-			try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
-		}
+		applyFramerateCap();
 
 		if(FlxG.save.data.gameplaySettings != null)
 		{
@@ -467,6 +445,57 @@ class ClientPrefs {
 				data.unlimitedFPS = false;
 			default:
 		}
+	}
+
+	/** Same idea as unlockFramerate engines: uncapped update/draw at 1000. */
+	public static function applyFramerateCap():Void
+	{
+		try
+		{
+			if (data.unlimitedFPS)
+			{
+				FlxG.updateFramerate = 1000;
+				FlxG.drawFramerate = 1000;
+				#if !html5
+				try { FlxG.stage.window.frameRate = 1000; } catch (e:Dynamic) {}
+				try { openfl.Lib.current.stage.frameRate = 1000; } catch (e:Dynamic) {}
+				// VSync can hard-lock Android to 60
+				try { data.vsync = false; } catch (e:Dynamic) {}
+				try {
+					var win = FlxG.stage.application.window;
+					if (win != null)
+					{
+						#if (lime >= "8.0.0")
+						// vsync off when possible
+						#end
+						win.frameRate = 1000;
+					}
+				} catch (e:Dynamic) {}
+				#end
+			}
+			else
+			{
+				var fps:Int = data.framerate;
+				if (fps < 10) fps = 60;
+				if (fps > FlxG.drawFramerate)
+				{
+					FlxG.updateFramerate = fps;
+					FlxG.drawFramerate = fps;
+				}
+				else
+				{
+					FlxG.drawFramerate = fps;
+					FlxG.updateFramerate = fps;
+				}
+				try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
+				try { openfl.Lib.current.stage.frameRate = fps; } catch (e:Dynamic) {}
+				try {
+					var win = FlxG.stage.application.window;
+					if (win != null) win.frameRate = fps;
+				} catch (e:Dynamic) {}
+			}
+		}
+		catch (e:Dynamic) {}
 	}
 
 	public static function getGraphicsQualityDescription(q:String):String
