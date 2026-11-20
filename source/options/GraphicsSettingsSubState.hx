@@ -150,27 +150,25 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 
 	function onChangeFramerate()
 	{
-		var fps:Int = ClientPrefs.data.unlimitedFPS ? 999 : ClientPrefs.data.framerate;
-		if(fps > FlxG.drawFramerate)
+		if (ClientPrefs.data.unlimitedFPS)
 		{
-			if (ClientPrefs.data.fpsRework)
-				FlxG.stage.window.frameRate = fps;
-			else
-			{
-				FlxG.updateFramerate = fps;
-				FlxG.drawFramerate = fps;
-			}
+			FlxG.updateFramerate = 1000;
+			FlxG.drawFramerate = 1000;
+			try { FlxG.stage.window.frameRate = 1000; } catch (e:Dynamic) {}
+			return;
+		}
+		var fps:Int = ClientPrefs.data.framerate;
+		if (fps > FlxG.drawFramerate)
+		{
+			FlxG.updateFramerate = fps;
+			FlxG.drawFramerate = fps;
 		}
 		else
 		{
-			if (ClientPrefs.data.fpsRework)
-				FlxG.stage.window.frameRate = fps;
-			else
-			{
-				FlxG.drawFramerate = fps;
-				FlxG.updateFramerate = fps;
-			}
+			FlxG.drawFramerate = fps;
+			FlxG.updateFramerate = fps;
 		}
+		try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
 	}
 
 	override function changeSelection(change:Int = 0)
