@@ -20,13 +20,10 @@ class ModZipExtractor
 		try
 		{
 			var modsDir:String = null;
-			try { modsDir = Mods.modsPath; } catch (e:Dynamic) {}
-			if (modsDir == null || modsDir.length < 1)
-			{
-				try { modsDir = Paths.mods(); } catch (e:Dynamic) {}
-			}
+			try { modsDir = Paths.mods(); } catch (e:Dynamic) {}
 			if (modsDir == null || modsDir.length < 1)
 				modsDir = 'mods/';
+			// Paths.mods('') may return path with trailing slash already
 
 			if (!FileSystem.exists(modsDir) || !FileSystem.isDirectory(modsDir))
 				return;
