@@ -579,7 +579,6 @@ class FreeplayState extends MusicBeatState
 		return null;
 	}
 
-	public static 
 	function enterPlayStateFromFreeplay():Void
 	{
 		@:privateAccess
@@ -599,7 +598,7 @@ class FreeplayState extends MusicBeatState
 		#end
 	}
 
-	function destroyFreeplayVocals() {
+	public static function destroyFreeplayVocals() {
 		if(vocals != null) vocals.stop();
 		vocals = FlxDestroyUtil.destroy(vocals);
 
