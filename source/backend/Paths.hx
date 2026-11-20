@@ -313,7 +313,7 @@ class Paths
 	}
 
 	/** Fixed: do not pass Bool as parentfolder (broke custom_notetypes/*.txt → all notes looked default) */
-	inline static public function getTextFromFile(key:String, ?ignoreMods:Bool = false):String
+	static public function getTextFromFile(key:String, ?ignoreMods:Bool = false):String
 	{
 		#if MODS_ALLOWED
 		if (!ignoreMods)
