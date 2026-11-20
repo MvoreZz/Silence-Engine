@@ -205,6 +205,40 @@ class PlayState extends MusicBeatState
 	public var cpuControlled:Bool = false;
 	public var opponentMode:Bool = false;
 
+	public static var pendingResume:Bool = false;
+	public static var resumeData:Null<{song:String, difficulty:Int, position:Float, score:Int, misses:Int, hits:Int, health:Float, combo:Int}> = null;
+
+	public static function clearResume():Void
+	{
+		resumeData = null;
+		pendingResume = false;
+		try {
+			if (FlxG.save.data != null)
+			{
+				FlxG.save.data.songResume = null;
+				FlxG.save.flush();
+			}
+		} catch (e:Dynamic) {}
+	}
+
+	public static function storeResume(data:Dynamic):Void
+	{
+		resumeData = data;
+		try {
+			FlxG.save.data.songResume = data;
+			FlxG.save.flush();
+		} catch (e:Dynamic) {}
+	}
+
+	public static function loadResume():Null<Dynamic>
+	{
+		try {
+			if (FlxG.save.data != null && FlxG.save.data.songResume != null)
+				return FlxG.save.data.songResume;
+		} catch (e:Dynamic) {}
+		return resumeData;
+	}
+
 	/** -style Play Opponent: mustPress stays chart-accurate; who plays is playsAsBF(). */
 	public static function playsAsBF():Bool
 		return !(instance != null && instance.opponentMode);
@@ -229,7 +263,19 @@ class PlayState extends MusicBeatState
 
 	/** Vocal track of the character YOU play (BF = vocals, Dad = opponentVocals if it exists). */
 	public function getPlayerVocals():FlxSound
-		return (playsAsBF() || opponentVocals == null || opponentVocals.length <= 0) ? vocals : opponentVocals;
+	{
+		try {
+			if (!playsAsBF() && opponentVocals != null && opponentVocals.length > 0)
+				return opponentVocals;
+		} catch (e:Dynamic) {}
+		return vocals;
+	}
+
+	inline function setVocalVolume(sound:FlxSound, vol:Float):Void
+	{
+		if (sound == null) return;
+		try { sound.volume = vol; } catch (e:Dynamic) {}
+	}
 
 	/** Script callbacks follow the CHART side, not who is playing:
 	 *  BF notes (mustPress) -> goodNoteHit*, Dad notes -> opponentNoteHit*. Same as normal play, in every mode. */
@@ -1103,6 +1149,37 @@ class PlayState extends MusicBeatState
 
 	public function startCountdown()
 	{
+		// Mid-song resume prompt (once per entry) — pause countdown until answered
+		if (!pendingResume)
+		{
+			var rd:Dynamic = loadResume();
+			if (rd != null && rd.song == songName && Std.int(rd.difficulty) == storyDifficulty && rd.position > 5000)
+			{
+				pendingResume = true;
+				persistentUpdate = false;
+				openSubState(new substates.ResumePromptSubState(SONG.song, function() {
+					try {
+						songScore = Std.int(rd.score);
+						songMisses = Std.int(rd.misses);
+						songHits = Std.int(rd.hits);
+						combo = Std.int(rd.combo);
+						health = rd.health;
+						startOnTime = rd.position;
+					} catch (e:Dynamic) {}
+					clearResume();
+					pendingResume = true;
+					persistentUpdate = true;
+					startCountdown();
+				}, function() {
+					clearResume();
+					pendingResume = true;
+					persistentUpdate = true;
+					startCountdown();
+				}));
+				return false;
+			}
+		}
+
 		if(startedCountdown) {
 			callOnScripts('onStartCountdown');
 			return false;
@@ -1791,11 +1868,24 @@ class PlayState extends MusicBeatState
 		stagesFunc(function(stage:BaseStage) stage.openSubState(SubState));
 		if (paused)
 		{
+			if (Conductor.songPosition > 5000 && !endingSong && generatedMusic)
+			{
+				storeResume({
+					song: songName,
+					difficulty: storyDifficulty,
+					position: Conductor.songPosition,
+					score: songScore,
+					misses: songMisses,
+					hits: songHits,
+					health: health,
+					combo: combo
+				});
+			}
 			if (FlxG.sound.music != null)
 			{
 				FlxG.sound.music.pause();
-				vocals.pause();
-				opponentVocals.pause();
+				if (vocals != null) try { vocals.pause(); } catch (e:Dynamic) {}
+				if (opponentVocals != null) try { opponentVocals.pause(); } catch (e:Dynamic) {}
 			}
 			FlxTimer.globalManager.forEach(function(tmr:FlxTimer) if(!tmr.finished) tmr.active = false);
 			FlxTween.globalManager.forEach(function(twn:FlxTween) if(!twn.finished) twn.active = false);
@@ -2723,9 +2813,9 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		updateTime = false;
 		FlxG.sound.music.volume = 0;
 
-		vocals.volume = 0;
+		setVocalVolume(vocals, 0);
 		vocals.pause();
-		opponentVocals.volume = 0;
+		setVocalVolume(opponentVocals, 0);
 		opponentVocals.pause();
 
 		if(ClientPrefs.data.noteOffset <= 0 || ignoreNoteOffset) {
@@ -2773,8 +2863,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (ClientPrefs.data.autoClearCacheAfterMatch)
 		{
 			try {
-				Paths.clearUnusedMemory();
-				Paths.clearStoredMemory();
+				if (Paths != null)
+				{
+					Paths.clearUnusedMemory();
+					Paths.clearStoredMemory();
+				}
 			} catch (e:Dynamic) {}
 		}
 
@@ -2903,7 +2996,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 	private function popUpScore(note:Note = null):Void
 	{
 		var noteDiff:Float = Math.abs(note.strumTime - Conductor.songPosition + ClientPrefs.data.ratingOffset);
-		vocals.volume = 1;
+		setVocalVolume(vocals, 1);
 
 		if (!ClientPrefs.data.comboStacking && comboGroup.members.length > 0)
 		{
@@ -3340,8 +3433,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 
 		if(instakillOnMiss)
 		{
-			vocals.volume = 0;
-			opponentVocals.volume = 0;
+			setVocalVolume(vocals, 0);
+			setVocalVolume(opponentVocals, 0);
 			doDeathCheck(true);
 		}
 
@@ -3372,7 +3465,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				gf.specialAnim = true;
 			}
 		}
-		getPlayerVocals().volume = 0;
+		setVocalVolume(getPlayerVocals(), 0);
 	}
 
 	function opponentNoteHit(note:Note):Void
@@ -3413,7 +3506,8 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			}
 		}
 
-		if(opponentVocals.length <= 0 || !playsAsBF()) vocals.volume = 1; // Play Opponent: CPU is BF = `vocals`
+		if (playsAsBF()) setVocalVolume(vocals, 1);
+		else { setVocalVolume(vocals, 1); setVocalVolume(opponentVocals, 1); }
 		strumPlayAnimRole(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
 		note.hitByOpponent = true;
 
@@ -3502,7 +3596,7 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 				if(spr != null) spr.playAnim('confirm', true);
 			}
 			else strumPlayAnimRole(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
-			getPlayerVocals().volume = 1;
+			setVocalVolume(getPlayerVocals(), 1);
 
 			if (!note.isSustainNote)
 			{
@@ -3568,8 +3662,11 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 		if (ClientPrefs.data.autoClearCacheAfterMatch)
 		{
 			try {
-				Paths.clearUnusedMemory();
-				Paths.clearStoredMemory();
+				if (Paths != null)
+				{
+					Paths.clearUnusedMemory();
+					Paths.clearStoredMemory();
+				}
 			} catch (e:Dynamic) {}
 		}
 		if (psychlua.CustomSubstate.instance != null)
