@@ -211,6 +211,8 @@ class PlayState extends MusicBeatState
 	public static var resumeApplyHits:Int = -1;
 	public static var resumeApplyCombo:Int = -1;
 	public static var resumeApplyHealth:Float = -1;
+	public static var resumeApplyTotalPlayed:Int = -1;
+	public static var resumeApplyTotalNotesHit:Float = -1;
 	public static var resumeData:Null<{song:String, difficulty:Int, position:Float, score:Int, misses:Int, hits:Int, health:Float, combo:Int}> = null;
 
 	public static function clearResume():Void
@@ -408,8 +410,12 @@ class PlayState extends MusicBeatState
 			songHits = (resumeApplyHits >= 0) ? resumeApplyHits : 0;
 			combo = (resumeApplyCombo >= 0) ? resumeApplyCombo : 0;
 			if (resumeApplyHealth >= 0) health = resumeApplyHealth;
+			if (resumeApplyTotalPlayed >= 0) totalPlayed = resumeApplyTotalPlayed;
+			if (resumeApplyTotalNotesHit >= 0) totalNotesHit = resumeApplyTotalNotesHit;
 			resumeApplyScore = resumeApplyMisses = resumeApplyHits = resumeApplyCombo = -1;
 			resumeApplyHealth = -1;
+			resumeApplyTotalPlayed = -1;
+			resumeApplyTotalNotesHit = -1;
 		}
 		clearResume();
 
@@ -810,7 +816,7 @@ class PlayState extends MusicBeatState
 		holdSplash.alpha = 0.0001;
 		grpHoldSplashes.add(holdSplash);
 
-		// P-Slice style pause button (top-right P)
+		// pause button (top-right P)
 		addTouchPad('NONE', 'P');
 		addTouchPadCamera();
 
@@ -1874,7 +1880,9 @@ class PlayState extends MusicBeatState
 					misses: songMisses,
 					hits: songHits,
 					health: health,
-					combo: combo
+					combo: combo,
+					totalPlayed: totalPlayed,
+					totalNotesHit: totalNotesHit
 				});
 			}
 			if (FlxG.sound.music != null)
