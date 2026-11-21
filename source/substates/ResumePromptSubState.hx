@@ -8,6 +8,7 @@ import objects.HealthIcon;
 
 /**
  * Continue-from-checkpoint prompt. UI mirrors ResetScoreSubState (YES/NO + icon).
+ * Yes = win icon frame, No = lose icon frame. Icon = opponent / song character.
  */
 class ResumePromptSubState extends MusicBeatSubstate
 {
@@ -20,7 +21,7 @@ class ResumePromptSubState extends MusicBeatSubstate
 	var yesCb:Void->Void;
 	var noCb:Void->Void;
 
-	public function new(songName:String, yesCallback:Void->Void, noCallback:Void->Void)
+	public function new(songName:String, yesCallback:Void->Void, noCallback:Void->Void, ?character:String = 'bf')
 	{
 		super();
 		yesCb = yesCallback;
@@ -51,7 +52,8 @@ class ResumePromptSubState extends MusicBeatSubstate
 		text3.alpha = 0;
 		add(text3);
 
-		icon = new HealthIcon('bf');
+		var charName:String = (character != null && character.length > 0) ? character : 'bf';
+		icon = new HealthIcon(charName);
 		icon.setGraphicSize(Std.int(icon.width * 0.8));
 		icon.updateHitbox();
 		icon.setPosition(text2.x + text2.width + 20, text2.y - 30);
@@ -127,8 +129,9 @@ class ResumePromptSubState extends MusicBeatSubstate
 		yesText.scale.set(scales[confirmInt], scales[confirmInt]);
 		noText.alpha = alphas[1 - confirmInt];
 		noText.scale.set(scales[1 - confirmInt], scales[1 - confirmInt]);
+		// HealthIcon: frame 0 = win/healthy, frame 1 = lose — Yes should show win
 		if (icon != null && icon.animation != null && icon.animation.curAnim != null)
-			icon.animation.curAnim.curFrame = confirmInt;
+			icon.animation.curAnim.curFrame = onYes ? 0 : 1;
 	}
 
 	function closeWith(accepted:Bool)
