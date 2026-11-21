@@ -98,7 +98,6 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		option.onChange = function() {
 			onManualGraphicsEdit();
 			onChangeFramerate();
-			ClientPrefs.saveSettings();
 		};
 		addOption(option);
 
@@ -151,7 +150,21 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 
 	function onChangeFramerate()
 	{
-		ClientPrefs.applyFramerateCap();
+		var fps:Int = ClientPrefs.data.unlimitedFPS ? 999 : ClientPrefs.data.framerate;
+		if (ClientPrefs.data.fpsRework)
+		{
+			FlxG.stage.window.frameRate = fps;
+		}
+		else if (fps > FlxG.drawFramerate)
+		{
+			FlxG.updateFramerate = fps;
+			FlxG.drawFramerate = fps;
+		}
+		else
+		{
+			FlxG.drawFramerate = fps;
+			FlxG.updateFramerate = fps;
+		}
 	}
 
 	override function changeSelection(change:Int = 0)
