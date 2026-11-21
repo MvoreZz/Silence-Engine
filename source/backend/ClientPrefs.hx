@@ -234,7 +234,22 @@ class ClientPrefs {
 		}
 		#end
 
-		applyFramerateCap();
+		var fps:Int = data.unlimitedFPS ? 999 : data.framerate;
+		if (data.fpsRework)
+			FlxG.stage.window.frameRate = fps;
+		else
+		{
+			if (fps > FlxG.drawFramerate)
+			{
+				FlxG.updateFramerate = fps;
+				FlxG.drawFramerate = fps;
+			}
+			else
+			{
+				FlxG.drawFramerate = fps;
+				FlxG.updateFramerate = fps;
+			}
+		}
 
 		if(FlxG.save.data.gameplaySettings != null)
 		{
@@ -445,39 +460,6 @@ class ClientPrefs {
 				data.unlimitedFPS = false;
 			default:
 		}
-	}
-
-	/** Same idea as unlockFramerate engines: uncapped update/draw at 1000. */
-	public static function applyFramerateCap():Void
-	{
-		try
-		{
-			if (data.unlimitedFPS)
-			{
-				// High fixed targets. FPSCounter must not rewrite these when unlimited.
-				FlxG.updateFramerate = 999;
-				FlxG.drawFramerate = 999;
-				try { FlxG.stage.window.frameRate = 999; } catch (e:Dynamic) {}
-			}
-			else
-			{
-				var fps:Int = data.framerate;
-				if (fps < 10) fps = 60;
-				// Match original Psych order: higher first to avoid temporary mismatch
-				if (fps > FlxG.drawFramerate)
-				{
-					FlxG.updateFramerate = fps;
-					FlxG.drawFramerate = fps;
-				}
-				else
-				{
-					FlxG.drawFramerate = fps;
-					FlxG.updateFramerate = fps;
-				}
-				try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
-			}
-		}
-		catch (e:Dynamic) {}
 	}
 
 	public static function getGraphicsQualityDescription(q:String):String
