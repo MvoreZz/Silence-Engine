@@ -21,7 +21,7 @@ import states.TitleState;
 	public var vsync:Bool = false;
 	public var gameOverVibration:Bool = false;
 	public var fpsRework:Bool = false;
-	public var smoothHealthBar:Bool = true; // lerp health bar
+	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
 	public var graphicsQuality:String = 'Low'; // set by analyzeDeviceQuality on load unless Custom
 	
@@ -450,28 +450,14 @@ class ClientPrefs {
 	/** Same idea as unlockFramerate engines: uncapped update/draw at 1000. */
 	public static function applyFramerateCap():Void
 	{
+		// Old-style unlimited: 999 cap on update/draw/window. FPSCounter must not override this.
 		try
 		{
 			if (data.unlimitedFPS)
 			{
-				FlxG.updateFramerate = 1000;
-				FlxG.drawFramerate = 1000;
-				#if !html5
-				try { FlxG.stage.window.frameRate = 1000; } catch (e:Dynamic) {}
-				try { openfl.Lib.current.stage.frameRate = 1000; } catch (e:Dynamic) {}
-				// VSync can hard-lock Android to 60
-				try { data.vsync = false; } catch (e:Dynamic) {}
-				try {
-					var win = FlxG.stage.application.window;
-					if (win != null)
-					{
-						#if (lime >= "8.0.0")
-						// vsync off when possible
-						#end
-						win.frameRate = 1000;
-					}
-				} catch (e:Dynamic) {}
-				#end
+				FlxG.updateFramerate = 999;
+				FlxG.drawFramerate = 999;
+				try { FlxG.stage.window.frameRate = 999; } catch (e:Dynamic) {}
 			}
 			else
 			{
@@ -488,11 +474,6 @@ class ClientPrefs {
 					FlxG.updateFramerate = fps;
 				}
 				try { FlxG.stage.window.frameRate = fps; } catch (e:Dynamic) {}
-				try { openfl.Lib.current.stage.frameRate = fps; } catch (e:Dynamic) {}
-				try {
-					var win = FlxG.stage.application.window;
-					if (win != null) win.frameRate = fps;
-				} catch (e:Dynamic) {}
 			}
 		}
 		catch (e:Dynamic) {}
