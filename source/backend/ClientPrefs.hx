@@ -450,11 +450,11 @@ class ClientPrefs {
 	/** Same idea as unlockFramerate engines: uncapped update/draw at 1000. */
 	public static function applyFramerateCap():Void
 	{
-		// Old-style unlimited: 999 cap on update/draw/window. FPSCounter must not override this.
 		try
 		{
 			if (data.unlimitedFPS)
 			{
+				// High fixed targets. FPSCounter must not rewrite these when unlimited.
 				FlxG.updateFramerate = 999;
 				FlxG.drawFramerate = 999;
 				try { FlxG.stage.window.frameRate = 999; } catch (e:Dynamic) {}
@@ -463,6 +463,7 @@ class ClientPrefs {
 			{
 				var fps:Int = data.framerate;
 				if (fps < 10) fps = 60;
+				// Match original Psych order: higher first to avoid temporary mismatch
 				if (fps > FlxG.drawFramerate)
 				{
 					FlxG.updateFramerate = fps;
