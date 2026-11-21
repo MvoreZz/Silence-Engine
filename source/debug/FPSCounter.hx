@@ -80,7 +80,6 @@ class FPSCounter extends TextField
 		var gfx:String = '';
 		try
 		{
-			// Show device tier, not "Custom"
 			var q:String = ClientPrefs.data.graphicsQuality;
 			if (q == null || q == 'Custom')
 				q = ClientPrefs.analyzeDeviceQuality();
@@ -106,40 +105,27 @@ class FPSCounter extends TextField
 		}
 		catch (e:Dynamic) {}
 
-		text =
-		'FPS: $currentFPS' +
+		text = 
+		'FPS: $currentFPS' + 
 		'\nMemory: ${flixel.util.FlxStringUtil.formatBytes(mem)}' +
 		'\nPeak: ${flixel.util.FlxStringUtil.formatBytes(peakMemoryMegas)}' +
 		(gfx != null && gfx.length > 0 ? '\nGPU: ' + gfx : '') +
-		((luaN > 0 || hxN > 0) ? '\n$luaN lua | $hxN haxe' : '') +
+		((luaN > 0 || hxN > 0) ? '\n' + luaN + ' lua | ' + hxN + ' haxe' : '') +
 		os;
 
 		textColor = 0xFFFFFFFF;
-		var target:Float = 60;
-		try {
-			if (ClientPrefs.data.unlimitedFPS)
-				target = 999;
-			else
-				target = ClientPrefs.data.framerate;
-		} catch (e:Dynamic) {
-			try { target = FlxG.stage.window.frameRate; } catch (e2:Dynamic) {}
-		}
-		if (currentFPS < target * 0.5)
+		if (currentFPS < FlxG.stage.window.frameRate * 0.5)
 			textColor = 0xFFFF0000;
 	}
 
 	var deltaTimeout:Float = 0.0;
 	private override function __enterFrame(deltaTime:Float):Void
 	{
-		var unlimited:Bool = false;
-		try { unlimited = ClientPrefs.data.unlimitedFPS; } catch (e:Dynamic) {}
-
 		if (ClientPrefs.data.fpsRework)
 		{
-			// Keep window frameRate on the preferred cap (never force 60 when unlimited)
-			var want:Int = unlimited ? 999 : ClientPrefs.data.framerate;
-			if (FlxG.stage.window.frameRate != want && FlxG.stage.window.frameRate != FlxG.game.focusLostFramerate)
-				FlxG.stage.window.frameRate = want;
+			// Flixel keeps reseting this to 60 on focus gained
+			if (FlxG.stage.window.frameRate != ClientPrefs.data.framerate && FlxG.stage.window.frameRate != FlxG.game.focusLostFramerate)
+				FlxG.stage.window.frameRate = ClientPrefs.data.framerate;
 
 			var currentTime = openfl.Lib.getTimer();
 			framesCount++;
@@ -153,9 +139,8 @@ class FPSCounter extends TextField
 				updateTime = currentTime + 500;
 			}
 
-			// Original "prevent slowness" sync — MUST NOT run when unlimited (causes slow-mo / 60 lock)
-			if (!unlimited
-				&& (FlxG.updateFramerate >= currentFPS + 5 || FlxG.updateFramerate <= currentFPS - 5)
+			// Set Update and Draw framerate to the current FPS every 1.5 second to prevent "slowness" issue
+			if ((FlxG.updateFramerate >= currentFPS + 5 || FlxG.updateFramerate <= currentFPS - 5)
 				&& haxe.Timer.stamp() - lastFramerateUpdateTime >= 1.5
 				&& currentFPS >= 30)
 			{
@@ -176,8 +161,7 @@ class FPSCounter extends TextField
 				return;
 			}
 
-			var cap:Int = unlimited ? 999 : Std.int(FlxG.updateFramerate);
-			currentFPS = times.length < cap ? times.length : cap;
+			currentFPS = times.length < FlxG.updateFramerate ? times.length : FlxG.updateFramerate;
 			deltaTimeout = 0.0;
 		}
 
