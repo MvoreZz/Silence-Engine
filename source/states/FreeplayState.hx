@@ -535,6 +535,8 @@ class FreeplayState extends MusicBeatState
 						PlayState.resumeApplyHits = Std.int(rd.hits);
 						PlayState.resumeApplyCombo = Std.int(rd.combo);
 						PlayState.resumeApplyHealth = rd.health;
+						if (rd.totalPlayed != null) PlayState.resumeApplyTotalPlayed = Std.int(rd.totalPlayed);
+						if (rd.totalNotesHit != null) PlayState.resumeApplyTotalNotesHit = rd.totalNotesHit;
 					} catch (e:Dynamic) {}
 					PlayState.clearResume();
 					enterPlayStateFromFreeplay();
@@ -544,7 +546,7 @@ class FreeplayState extends MusicBeatState
 					PlayState.resumeApplyScore = -1;
 					PlayState.clearResume();
 					enterPlayStateFromFreeplay();
-				}));
+				}, songs[curSelected].songCharacter));
 				removeTouchPad();
 				return;
 			}
