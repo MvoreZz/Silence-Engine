@@ -3,7 +3,6 @@ package states;
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
-import flixel.FlxSubState;
 import flixel.group.FlxGroup;
 import flixel.sound.FlxSound;
 import flixel.text.FlxText;
@@ -11,15 +10,22 @@ import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
+import flixel.math.FlxMath;
 import flixel.input.keyboard.FlxKey;
 import haxe.io.Path;
 import backend.WeekData;
 import objects.Character;
-import objects.HealthIcon;
+#if sys
+import sys.FileSystem;
+#end
 
 /**
- * Character skin select menu.
- * Scans assets + enabled mods for playable characters and stores choice in ClientPrefs.data.currentSkin.
+ * Character skin select menu (mobile friendly).
+ *
+ * - Scans assets/base_game/shared/characters (+ other asset folders) and every enabled mod.
+ * - Stores the choice in ClientPrefs.data.currentSkin.
+ * - Uses ONLY the default camera (no extra FlxCamera) and its own touch buttons,
+ *   so it can't hit the "TouchButton -> FlxPointer.getWorldPosition null object" crash.
  */
 class SkinsState extends MusicBeatState
 {
@@ -28,15 +34,24 @@ class SkinsState extends MusicBeatState
 	public static var RIGHT_SUFFIX = ['-player', '-playable', '-right'];
 	static var SKIP_SUFFICES = ['-pixel', '-christmas', '-car', '-blazin'];
 
+	/** Folders that can hold base game character jsons (first ones are the engine's real path). */
+	static var BASE_CHARACTER_DIRS = [
+		'assets/base_game/shared/characters/',
+		'assets/shared/characters/',
+		'assets/base_game/characters/',
+		'assets/characters/'
+	];
+
+	/** Same zoom the original character camera used. */
+	static inline var CHAR_ZOOM:Float = 0.8;
+
 	var charactersWithWeeks:Array<Int> = [];
 	// [character_name, left_suffix, right_suffix, mod_folder]
 	var charactersList:Array<Array<String>> = [];
 	static var curCharacter:Int = -1;
 
 	var character:FlxTypedGroup<Character>;
-	var characterCamera:FlxCamera;
 
-	var hud:FlxCamera;
 	var charSelect:FlxText;
 	var charInfo:FlxText;
 
@@ -52,6 +67,7 @@ class SkinsState extends MusicBeatState
 	static var backClass:Class<Dynamic>;
 
 	var reloadedState:Bool = false;
+	var ready:Bool = false;
 
 	var blackRectangle:FlxSprite;
 
@@ -67,12 +83,18 @@ class SkinsState extends MusicBeatState
 	var staticMan:FlxSprite;
 	var selectTimer:FlxTimer;
 
-	var stageCrowd:Dynamic;
-	var stageSpeakers:Dynamic;
-	var defaultGirlfriend:Dynamic;
 	var camFollow:FlxObject;
 
 	var stageObjects:Array<FlxSprite> = [];
+
+	// touch ui
+	var btnBack:FlxSprite;
+	var btnSelect:FlxSprite;
+	var btnFlip:FlxSprite;
+	var btnBackText:FlxText;
+	var btnFlipText:FlxText;
+
+	var scanLog:String = '';
 
 	public function new()
 	{
@@ -130,29 +152,22 @@ class SkinsState extends MusicBeatState
 			Conductor.songPosition = 0;
 		}
 
-		FlxG.cameras.add(characterCamera = new FlxCamera(), false);
-		FlxG.cameras.add(hud = new FlxCamera(), false);
-		characterCamera.bgColor.alpha = 0;
-		hud.bgColor.alpha = 0;
-		hud.bgColor = 0x00000000;
-		characterCamera.zoom = 0.8;
-
+		// Everything lives on the DEFAULT camera. HUD pieces use scrollFactor 0.
 		camFollow = new FlxObject(FlxG.width / 2, FlxG.height / 2 - 200, 1, 1);
 		camera.follow(camFollow, LOCKON, 0.05);
-		characterCamera.follow(camFollow, LOCKON, 0.05);
 		camera.snapToTarget();
-		characterCamera.snapToTarget();
 		camFollow.setPosition(FlxG.width / 2, FlxG.height / 2);
 
 		blackRectangle = new FlxSprite();
 		blackRectangle.makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
-		blackRectangle.cameras = [hud];
+		blackRectangle.scrollFactor.set(0, 0);
 
 		bg = new FlxSprite().loadGraphic(Paths.image('menuDesat'));
 		bg.color = 0xff303030;
 		bg.setGraphicSize(Std.int(bg.width * 1.1));
 		bg.screenCenter();
 		bg.antialiasing = ClientPrefs.data.antialiasing;
+		bg.scrollFactor.set(0, 0);
 		add(bg);
 
 		stageObjects = [bg];
@@ -220,7 +235,6 @@ class SkinsState extends MusicBeatState
 		catch (e:Dynamic) {}
 
 		character = new FlxTypedGroup<Character>();
-		character.cameras = [characterCamera];
 		add(character);
 
 		staticMan = new FlxSprite();
@@ -243,52 +257,62 @@ class SkinsState extends MusicBeatState
 
 		var barUp = new FlxSprite();
 		barUp.makeGraphic(FlxG.width, 100, FlxColor.BLACK);
-		barUp.cameras = [hud];
+		barUp.scrollFactor.set(0, 0);
 		add(barUp);
 
 		var barDown = new FlxSprite();
 		barDown.makeGraphic(FlxG.width, 100, FlxColor.BLACK);
 		barDown.y = FlxG.height - barDown.height;
-		barDown.cameras = [hud];
+		barDown.scrollFactor.set(0, 0);
 		add(barDown);
 
 		title = new Alphabet(0, 0, "BOYFRIEND", true);
-		title.cameras = [hud];
+		title.scrollFactor.set(0, 0);
 		title.y = barUp.height / 2 - title.height / 2;
 		title.x = FlxG.width / 2 - title.width / 2;
 		add(title);
 
 		arrowLeft = new Alphabet(0, 0, "<", true);
-		arrowLeft.cameras = [hud];
+		arrowLeft.scrollFactor.set(0, 0);
 		arrowLeft.y = FlxG.height / 2 - arrowLeft.height / 2;
 		arrowLeft.x = alX = 100;
 		add(arrowLeft);
 
 		arrowRight = new Alphabet(0, 0, ">", true);
-		arrowRight.cameras = [hud];
+		arrowRight.scrollFactor.set(0, 0);
 		arrowRight.y = FlxG.height / 2 - arrowRight.height / 2;
 		arrowRight.x = arX = FlxG.width - arrowRight.width - 100;
 		add(arrowRight);
 
-		charSelect = new FlxText(0, 0, FlxG.width);
-		charSelect.text = 'Press ACCEPT to select!';
-		charSelect.setFormat("VCR OSD Mono", 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		charSelect.y = barDown.y + barDown.height / 2 - charSelect.height / 2;
-		charSelect.cameras = [hud];
-		add(charSelect);
+		// ---- bottom bar: 3 touch buttons [BACK] [SELECT] [FLIP] ----
+		final third:Float = FlxG.width / 3;
+		final btnW:Int = Std.int(third - 30);
+		final btnH:Int = 64;
+		final btnY:Float = barDown.y + (barDown.height - btnH) / 2;
+
+		btnBack = makeButton(third * 0 + 15, btnY, btnW, btnH);
+		btnSelect = makeButton(third * 1 + 15, btnY, btnW, btnH);
+		btnFlip = makeButton(third * 2 + 15, btnY, btnW, btnH);
+
+		btnBackText = makeButtonText(btnBack, 'BACK', btnH);
+		charSelect = makeButtonText(btnSelect, 'SELECT', btnH);
+		btnFlipText = makeButtonText(btnFlip, 'FLIP SIDE', btnH);
 
 		charInfo = new FlxText(0, 0, FlxG.width);
 		charInfo.setFormat("VCR OSD Mono", 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		charInfo.y = charSelect.y - 30;
-		charInfo.cameras = [hud];
+		charInfo.y = barDown.y - 30;
+		charInfo.scrollFactor.set(0, 0);
+		charInfo.visible = false;
 		add(charInfo);
 
+		#if !mobile
 		var tip1 = new FlxText(20, 0, FlxG.width, 'TAB - Flip side\nQ - Favorite\nRESET - None');
-		tip1.setFormat("VCR OSD Mono", 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		tip1.y = charSelect.y - 10;
+		tip1.setFormat("VCR OSD Mono", 14, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		tip1.y = barDown.y - 60;
 		tip1.alpha = 0.5;
-		tip1.cameras = [hud];
+		tip1.scrollFactor.set(0, 0);
 		add(tip1);
+		#end
 
 		tweenColor(FlxColor.fromHSL(180, 1, 0.5));
 		if (colorTweens != null)
@@ -297,193 +321,211 @@ class SkinsState extends MusicBeatState
 
 		setCharacter(0);
 
-		#if mobile
-		addTouchPad('LEFT_RIGHT', 'A_B');
-		if (touchPad != null)
-		{
-			touchPad.cameras = [hud];
-			try { addTouchPadCamera(); } catch (e:Dynamic) {}
-		}
-		#end
-
 		super.create();
+		ready = true;
 	}
+
+	function makeButton(x:Float, y:Float, w:Int, h:Int):FlxSprite
+	{
+		var b = new FlxSprite(x, y);
+		b.makeGraphic(w, h, FlxColor.WHITE);
+		b.color = FlxColor.fromRGB(40, 40, 40);
+		b.alpha = 0.85;
+		b.scrollFactor.set(0, 0);
+		add(b);
+		return b;
+	}
+
+	function makeButtonText(b:FlxSprite, text:String, h:Int):FlxText
+	{
+		var t = new FlxText(b.x, 0, b.width, text);
+		t.setFormat("VCR OSD Mono", 26, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		t.y = b.y + (h - t.height) / 2;
+		t.scrollFactor.set(0, 0);
+		add(t);
+		return t;
+	}
+
+	function getEntry(i:Int):Array<String>
+	{
+		return (i >= 0 && i < charactersList.length) ? charactersList[i] : null;
+	}
+
+	// ------------------------------------------------------------------
+	//  Character discovery
+	// ------------------------------------------------------------------
 
 	function scanCharacters()
 	{
 		charactersList = [];
 		charactersWithWeeks = [];
+		scanLog = '';
 
-		var origins:Array<String> = [null];
+		var seen:Map<String, Bool> = new Map();
+
+		// 1) base game: every existing known folder (the engine's real one is assets/base_game/shared/characters)
+		Mods.loadTopMod();
+		var baseDirs:Array<String> = BASE_CHARACTER_DIRS.copy();
+		try
+		{
+			var p:String = Paths.getSharedPath('characters/');
+			if (p != null && baseDirs.indexOf(p) == -1)
+				baseDirs.insert(0, p);
+		}
+		catch (e:Dynamic) {}
+
+		for (dir in baseDirs)
+			scanDirectory(dir, StringTools.replace(dir, 'characters/', 'characters_weeks/'), null, seen);
+
+		// 2) mods
+		var mods:Array<String> = [];
 		#if MODS_ALLOWED
 		try
 		{
 			for (m in Mods.parseList().enabled)
-				origins.push(m);
+				mods.push(m);
 		}
 		catch (e:Dynamic) {}
 		#end
 
-		for (origin in origins)
+		for (m in mods)
 		{
-			var charactersDir:String;
-			var charactersWeeksDir:String;
+			Mods.currentModDirectory = m;
+			scanDirectory(Paths.mods(m + '/characters/'), Paths.mods(m + '/characters_weeks/'), m, seen);
+		}
 
-			if (origin == null)
-			{
-				Mods.loadTopMod();
-				// Desktop path + Android-friendly fallbacks
-				charactersDir = 'assets/characters/';
-				if (!FileSystem.exists(charactersDir))
-					charactersDir = Paths.getSharedPath('characters/');
-				if (!FileSystem.exists(charactersDir))
-					charactersDir = Paths.getPreloadPath('characters/');
-				if (!FileSystem.exists(charactersDir))
-					charactersDir = Paths.getFolderPath('characters/', 'shared');
-				charactersWeeksDir = 'assets/characters_weeks/';
-				if (!FileSystem.exists(charactersWeeksDir))
-					charactersWeeksDir = Paths.getSharedPath('characters_weeks/');
-			}
-			else
-			{
-				Mods.currentModDirectory = origin;
-				charactersDir = Paths.mods(origin + '/characters/');
-				charactersWeeksDir = Paths.mods(origin + '/characters_weeks/');
-			}
+		// global mods/characters
+		try
+		{
+			scanDirectory(Paths.mods('characters/'), Paths.mods('characters_weeks/'), null, seen);
+		}
+		catch (e:Dynamic) {}
 
-			if (charactersDir == null || !FileSystem.exists(charactersDir))
+		Mods.loadTopMod();
+	}
+
+	function scanDirectory(charactersDir:String, charactersWeeksDir:String, origin:String, seen:Map<String, Bool>):Void
+	{
+		if (charactersDir == null)
+			return;
+
+		var exists:Bool = false;
+		try { exists = FileSystem.exists(charactersDir) && FileSystem.isDirectory(charactersDir); } catch (e:Dynamic) {}
+		if (!exists)
+			return;
+
+		var files:Array<String> = [];
+		try { files = FileSystem.readDirectory(charactersDir); } catch (e:Dynamic) { files = []; }
+		scanLog += charactersDir + ' (' + files.length + ')\n';
+
+		var modFolder:String = (origin == null) ? '' : origin;
+		var charSkipSearch:Array<String> = [];
+
+		function jsonExists(name:String):Bool
+		{
+			try { return FileSystem.exists(Path.join([charactersDir, name + '.json'])); } catch (e:Dynamic) {}
+			return false;
+		}
+
+		function addCharacter(characterName:String, leftSuffix:String, rightSuffix:String):Bool
+		{
+			if (BLACKLISTED_CHARACTERS.contains(characterName))
+				return false;
+			for (suffix in SKIP_SUFFICES)
+				if (StringTools.endsWith(characterName, suffix))
+					return false;
+
+			var key = characterName + '|' + modFolder;
+			if (seen.exists(key))
+				return false;
+			seen.set(key, true);
+
+			charactersList.push([characterName, leftSuffix, rightSuffix, modFolder]);
+			charSkipSearch.push(characterName + leftSuffix);
+			charSkipSearch.push(characterName + rightSuffix);
+
+			try
+			{
+				if (charactersWeeksDir != null && FileSystem.exists(Path.join([charactersWeeksDir, characterName + ".json"])))
+					charactersWithWeeks.push(charactersList.length - 1);
+			}
+			catch (e:Dynamic) {}
+
+			if (isEquipped(charactersList.length - 1))
+				curCharacter = charactersList.length - 1;
+
+			return true;
+		}
+
+		for (file in files)
+		{
+			if (file == null || !StringTools.endsWith(file, '.json'))
 				continue;
 
-			var charSkipSearch:Array<String> = [];
+			var character:String = file.substr(0, file.length - 5);
+			if (charSkipSearch.contains(character))
+				continue;
 
-			function addCharacter(characterName:String, leftSuffix:String, rightSuffix:String, org:String):Bool
+			var hasAdded = false;
+
+			// character-player / -playable / -right  (+ optional left side)
+			for (playableSuffix in RIGHT_SUFFIX)
 			{
-				if (BLACKLISTED_CHARACTERS.contains(characterName))
-					return false;
-				for (suffix in SKIP_SUFFICES)
-					if (characterName.endsWith(suffix))
-						return false;
-
-				var modFolder = (org == null) ? '' : org;
-				charactersList.push([characterName, leftSuffix, rightSuffix, modFolder]);
-				charSkipSearch.push(characterName + leftSuffix);
-				charSkipSearch.push(characterName + rightSuffix);
-
-				try
+				if (StringTools.endsWith(character, playableSuffix))
 				{
-					if (FileSystem.exists(Path.join([charactersWeeksDir, characterName + ".json"])))
-						charactersWithWeeks.push(charactersList.length - 1);
-				}
-				catch (e:Dynamic) {}
+					final cutCharName = character.substr(0, character.length - playableSuffix.length);
 
-				if (isEquipped(charactersList.length - 1))
-					curCharacter = charactersList.length - 1;
+					var leftSuffix = '';
+					for (opponentSuffix in LEFT_SUFFIX)
+						if (jsonExists(cutCharName + opponentSuffix))
+							leftSuffix += opponentSuffix;
 
-				return true;
-			}
-
-			var files:Array<String> = [];
-			try { files = FileSystem.readDirectory(charactersDir); } catch (e:Dynamic) { files = []; }
-
-			// APK / assets fallback: list json via openfl when folder empty
-			if (files.length == 0)
-			{
-				try
-				{
-					for (path in openfl.utils.Assets.list(openfl.utils.AssetType.TEXT))
+					if (jsonExists(cutCharName))
 					{
-						if (path.indexOf('characters/') == -1 || !StringTools.endsWith(path, '.json'))
-							continue;
-						if (path.indexOf('characters_weeks') != -1)
-							continue;
-						var base = path;
-						var idx = base.lastIndexOf('/');
-						if (idx >= 0) base = base.substr(idx + 1);
-						files.push(base);
+						hasAdded = addCharacter(cutCharName, leftSuffix, playableSuffix);
+						break;
 					}
 				}
-				catch (e:Dynamic) {}
 			}
+			if (hasAdded) continue;
 
-			for (file in files)
+			// character-opponent / -left  (+ right side)
+			for (opponentSuffix in LEFT_SUFFIX)
 			{
-				if (file == null || !StringTools.endsWith(file, '.json'))
-					continue;
-
-				var character:String = file.substr(0, file.length - 5);
-				if (charSkipSearch.contains(character))
-					continue;
-
-				var hasAdded = false;
-
-				for (playableSuffix in RIGHT_SUFFIX)
+				if (StringTools.endsWith(character, opponentSuffix))
 				{
-					if (StringTools.endsWith(character, playableSuffix))
+					final cutCharName = character.substr(0, character.length - opponentSuffix.length);
+
+					var rightSuffix = '';
+					for (playableSuffix in RIGHT_SUFFIX)
+						if (jsonExists(cutCharName + playableSuffix))
+							rightSuffix += playableSuffix;
+
+					if (jsonExists(cutCharName + rightSuffix))
 					{
-						final cutCharName = character.substr(0, character.length - playableSuffix.length);
-						var leftSuffix = '';
-						for (opponentSuffix in LEFT_SUFFIX)
-						{
-							var tryPath = Path.join([charactersDir, cutCharName + opponentSuffix + '.json']);
-							var existsOpp = FileSystem.exists(tryPath);
-							if (!existsOpp)
-								existsOpp = openfl.utils.Assets.exists('characters/' + cutCharName + opponentSuffix + '.json')
-									|| openfl.utils.Assets.exists('shared:characters/' + cutCharName + opponentSuffix + '.json');
-							if (existsOpp) leftSuffix = opponentSuffix;
-						}
-						var baseExists = FileSystem.exists(Path.join([charactersDir, cutCharName + '.json']));
-						if (!baseExists)
-							baseExists = openfl.utils.Assets.exists('characters/' + cutCharName + '.json')
-								|| openfl.utils.Assets.exists('shared:characters/' + cutCharName + '.json');
-						if (baseExists)
-						{
-							hasAdded = addCharacter(cutCharName, leftSuffix, playableSuffix, origin);
-							break;
-						}
+						hasAdded = addCharacter(cutCharName, opponentSuffix, rightSuffix);
+						break;
 					}
-				}
-				if (hasAdded) continue;
-
-				for (opponentSuffix in LEFT_SUFFIX)
-				{
-					if (StringTools.endsWith(character, opponentSuffix))
-					{
-						final cutCharName = character.substr(0, character.length - opponentSuffix.length);
-						var rightSuffix = '';
-						for (playableSuffix in RIGHT_SUFFIX)
-						{
-							var tryPath = Path.join([charactersDir, cutCharName + playableSuffix + '.json']);
-							var existsPl = FileSystem.exists(tryPath);
-							if (!existsPl)
-								existsPl = openfl.utils.Assets.exists('characters/' + cutCharName + playableSuffix + '.json')
-									|| openfl.utils.Assets.exists('shared:characters/' + cutCharName + playableSuffix + '.json');
-							if (existsPl) rightSuffix = playableSuffix;
-						}
-						if (rightSuffix != '')
-						{
-							hasAdded = addCharacter(cutCharName, opponentSuffix, rightSuffix, origin);
-							break;
-						}
-					}
-				}
-
-				// plain character.json with matching -player sibling already handled;
-				// also accept standalone playable names without suffix pair (bf, etc.)
-				if (!hasAdded && !character.contains('-'))
-				{
-					// prefer as center name with empty suffixes (same json for both sides)
-					addCharacter(character, '', '', origin);
 				}
 			}
+			if (hasAdded) continue;
+
+			// plain characters (bf, dad, gf, ...): same json for both sides
+			if (character.indexOf('-') == -1)
+				addCharacter(character, '', '');
 		}
 	}
 
 	function getCharacterName(i:Int):String
 	{
-		final character = charactersList[i];
+		final character = getEntry(i);
 		if (character == null) return null;
 		return character[0] + character[flipped ? 2 : 1];
 	}
+
+	// ------------------------------------------------------------------
+	//  Actions (keyboard + touch share these)
+	// ------------------------------------------------------------------
 
 	var acceptSound:FlxSound;
 	var stopUpdates:Bool = false;
@@ -491,9 +533,155 @@ class SkinsState extends MusicBeatState
 	var leftHoldTime:Float = 0;
 	var rightHoldTime:Float = 0;
 
+	function pressButton(b:FlxSprite):Void
+	{
+		if (b == null) return;
+		FlxTween.cancelTweensOf(b);
+		b.color = FlxColor.fromRGB(110, 110, 110);
+		FlxTween.color(b, 0.25, b.color, FlxColor.fromRGB(40, 40, 40));
+	}
+
+	function acceptSkin():Void
+	{
+		if (selectTimer != null && !selectTimer.finished)
+		{
+			selectTimer.onComplete(selectTimer);
+			selectTimer.cancel();
+		}
+
+		ClientPrefs.data.currentSkin = getEntry(curCharacter);
+		ClientPrefs.saveSettings();
+		updateTexts();
+
+		if (acceptSound != null) acceptSound.stop();
+		try { acceptSound = FlxG.sound.play(Paths.sound('CS_confirm'), 0.8); } catch (e:Dynamic) {}
+		if (music != null) music.stop();
+
+		if (character.members[0] != null)
+			character.members[0].playAnim("hey", true);
+
+		stopUpdates = true;
+		new FlxTimer().start(1, function(_) {
+			leaveMenu();
+		});
+	}
+
+	function goBack():Void
+	{
+		stopUpdates = true;
+		new FlxTimer().start(0.3, function(_) {
+			leaveMenu();
+		});
+	}
+
+	function flipSkin():Void
+	{
+		flipped = !flipped;
+		prevCharacter = null;
+		setCharacter(0);
+	}
+
+	function toggleFavorite():Void
+	{
+		var entry = getEntry(curCharacter);
+		if (entry == null) return;
+
+		final charId = entry[0] + ':' + entry[3];
+		if (ClientPrefs.data.favSkins == null)
+			ClientPrefs.data.favSkins = [];
+
+		if (ClientPrefs.data.favSkins.contains(charId))
+		{
+			ClientPrefs.data.favSkins.remove(charId);
+			if (unfavSound != null) { unfavSound.volume = 1; unfavSound.play(true); }
+			if (character.members[0] != null) character.members[0].playAnim("hurt", true);
+		}
+		else
+		{
+			ClientPrefs.data.favSkins.push(charId);
+			if (favSound != null) { favSound.volume = 1; favSound.play(true); }
+			if (character.members[0] != null) character.members[0].playAnim("hey", true);
+		}
+		updateTexts();
+		ClientPrefs.saveSettings();
+	}
+
+	/** Own touch / mouse handling: no TouchPad, no camera lookups. Coordinates are game (screen) coordinates. */
+	function handlePointer():Void
+	{
+		var px:Float = -1;
+		var py:Float = -1;
+		var pressed:Bool = false;
+
+		#if FLX_TOUCH
+		for (t in FlxG.touches.list)
+		{
+			if (t != null && t.justPressed)
+			{
+				px = t.screenX;
+				py = t.screenY;
+				pressed = true;
+				break;
+			}
+		}
+		#end
+		#if FLX_MOUSE
+		if (!pressed && FlxG.mouse.justPressed)
+		{
+			px = FlxG.mouse.screenX;
+			py = FlxG.mouse.screenY;
+			pressed = true;
+		}
+		#end
+
+		if (!pressed)
+			return;
+
+		final barH:Float = 100;
+
+		// bottom bar: BACK | SELECT | FLIP
+		if (py >= FlxG.height - barH)
+		{
+			final third = FlxG.width / 3;
+			if (px < third)
+			{
+				pressButton(btnBack);
+				goBack();
+			}
+			else if (px < third * 2)
+			{
+				pressButton(btnSelect);
+				acceptSkin();
+			}
+			else
+			{
+				pressButton(btnFlip);
+				flipSkin();
+			}
+			return;
+		}
+
+		// middle area: left / right edges change the character
+		if (py > barH)
+		{
+			if (px < 260)
+				setCharacter(-1);
+			else if (px > FlxG.width - 260)
+				setCharacter(1);
+		}
+	}
+
 	override function update(elapsed:Float)
 	{
-		super.update(elapsed);
+		// a broken child object must never take the whole game down
+		try
+		{
+			super.update(elapsed);
+		}
+		catch (e:Dynamic)
+		{
+			trace('SkinsState.update error: ' + e);
+		}
 
 		arrowLeft.x = FlxMath.lerp(arrowLeft.x, alX, elapsed * 10);
 		arrowRight.x = FlxMath.lerp(arrowRight.x, arX, elapsed * 10);
@@ -520,6 +708,10 @@ class SkinsState extends MusicBeatState
 		if (music != null && music.playing)
 			Conductor.songPosition = music.time;
 
+		handlePointer();
+		if (stopUpdates)
+			return;
+
 		if (FlxG.keys.pressed.SHIFT)
 		{
 			if (character.members[0] != null)
@@ -538,48 +730,20 @@ class SkinsState extends MusicBeatState
 				setCharacter(1);
 		}
 
-		// Select
 		if (!FlxG.keys.pressed.SHIFT && controls.ACCEPT)
 		{
-			if (selectTimer != null && !selectTimer.finished)
-			{
-				selectTimer.onComplete(selectTimer);
-				selectTimer.cancel();
-			}
-
-			ClientPrefs.data.currentSkin = charactersList[curCharacter];
-			ClientPrefs.saveSettings();
-			updateTexts();
-
-			if (acceptSound != null) acceptSound.stop();
-			try { acceptSound = FlxG.sound.play(Paths.sound('CS_confirm'), 0.8); } catch (e:Dynamic) {}
-			if (music != null) music.stop();
-
-			if (character.members[0] != null)
-				character.members[0].playAnim("hey", true);
-
-			stopUpdates = true;
-			new FlxTimer().start(1, function(_) {
-				leaveMenu();
-			});
+			acceptSkin();
 			return;
 		}
 
 		if (controls.BACK)
 		{
-			stopUpdates = true;
-			new FlxTimer().start(0.3, function(_) {
-				leaveMenu();
-			});
+			goBack();
 			return;
 		}
 
 		if (FlxG.keys.justPressed.TAB)
-		{
-			flipped = !flipped;
-			prevCharacter = null;
-			setCharacter(0);
-		}
+			flipSkin();
 
 		// Favorite (Q or fav bind)
 		var favPressed = FlxG.keys.justPressed.Q;
@@ -593,27 +757,8 @@ class SkinsState extends MusicBeatState
 		}
 		catch (e:Dynamic) {}
 
-		if (favPressed && curCharacter >= 0)
-		{
-			final charId = charactersList[curCharacter][0] + ':' + charactersList[curCharacter][3];
-			if (ClientPrefs.data.favSkins == null)
-				ClientPrefs.data.favSkins = [];
-
-			if (ClientPrefs.data.favSkins.contains(charId))
-			{
-				ClientPrefs.data.favSkins.remove(charId);
-				if (unfavSound != null) { unfavSound.volume = 1; unfavSound.play(true); }
-				if (character.members[0] != null) character.members[0].playAnim("hurt", true);
-			}
-			else
-			{
-				ClientPrefs.data.favSkins.push(charId);
-				if (favSound != null) { favSound.volume = 1; favSound.play(true); }
-				if (character.members[0] != null) character.members[0].playAnim("hey", true);
-			}
-			updateTexts();
-			ClientPrefs.saveSettings();
-		}
+		if (favPressed)
+			toggleFavorite();
 
 		if (controls.RESET)
 		{
@@ -635,10 +780,8 @@ class SkinsState extends MusicBeatState
 
 	function leaveMenu()
 	{
-		try { removeTouchPad(); } catch (e:Dynamic) {}
 		isExiting = true;
 		camera.follow(camFollow, LOCKON, 0.01);
-		characterCamera.follow(camFollow, LOCKON, 0.01);
 
 		FlxTween.tween(blackRectangle, {alpha: 1}, 0.5, {ease: FlxEase.quadInOut});
 		blackRectangle.alpha = 0;
@@ -671,10 +814,15 @@ class SkinsState extends MusicBeatState
 				finishLeave();
 			});
 		else
-			finishLeave();
+			new FlxTimer().start(0.5, function(_) finishLeave());
 	}
 
+	// ------------------------------------------------------------------
+	//  Showing a character
+	// ------------------------------------------------------------------
+
 	var prevCharacter:Null<Int> = null;
+
 	function setCharacter(difference:Int, ?beatHold:Bool = false)
 	{
 		curCharacter += difference;
@@ -688,7 +836,7 @@ class SkinsState extends MusicBeatState
 			return;
 		prevCharacter = curCharacter;
 
-		if (persistentUpdate)
+		if (ready)
 		{
 			if (difference > 0) arrowRight.x += 40;
 			if (difference < 0) arrowLeft.x -= 40;
@@ -712,35 +860,62 @@ class SkinsState extends MusicBeatState
 		if (selectTimer != null)
 			selectTimer.cancel();
 
-		if (charactersList[curCharacter] != null)
+		var entry = getEntry(curCharacter);
+		if (entry != null)
 		{
+			final loadIndex = curCharacter;
 			selectTimer = new FlxTimer().start(0.35, function(_)
 			{
+				var e = getEntry(loadIndex);
+				if (e == null) return;
+
+				var char:Character = null;
+				var lastError:String = '';
+
+				// 1) the exact side we want, 2) the plain name as a fallback
+				for (name in [getCharacterName(loadIndex), e[0]])
+				{
+					if (name == null) continue;
+					try
+					{
+						Mods.currentModDirectory = e[3];
+						char = new Character(0, 0, name, !flipped);
+						break;
+					}
+					catch (exc:Dynamic)
+					{
+						lastError = Std.string(exc);
+						char = null;
+					}
+				}
+
+				if (char == null)
+				{
+					staticMan.visible = true;
+					charInfo.text = 'Failed to load: ' + getCharacterName(loadIndex) + '  (' + lastError + ')';
+					charInfo.visible = true;
+					trace('Failed to load skin: ' + lastError);
+					return;
+				}
+
 				try
 				{
-					Mods.currentModDirectory = charactersList[curCharacter][3];
-					var name = getCharacterName(curCharacter);
-					var char = new Character(0, 0, name, !flipped);
-					char.x += char.positionArray[0];
-					char.y += char.positionArray[1];
 					char.dance();
+					placeCharacter(char);
 					character.add(char);
 
 					staticMan.visible = false;
 					if (staticSound != null) staticSound.stop();
 
-					try
-					{
-						var hca = char.healthColorArray;
-						if (hca != null && hca.length >= 3)
-							tweenColor(FlxColor.fromRGB(hca[0], hca[1], hca[2]));
-					}
-					catch (e:Dynamic) {}
+					var hca = char.healthColorArray;
+					if (hca != null && hca.length >= 3)
+						tweenColor(FlxColor.fromRGB(hca[0], hca[1], hca[2]));
 				}
 				catch (exc:Dynamic)
 				{
 					staticMan.visible = true;
-					trace('Failed to load skin: ' + exc);
+					charInfo.text = 'Failed to show: ' + e[0] + '  (' + Std.string(exc) + ')';
+					charInfo.visible = true;
 				}
 			});
 		}
@@ -753,9 +928,35 @@ class SkinsState extends MusicBeatState
 		updateTexts();
 	}
 
+	/**
+	 * The original used a second camera with zoom 0.8 around the screen center.
+	 * We emulate the same result on the default camera by scaling the sprite and
+	 * moving it so its visual center lands where the zoomed camera would put it.
+	 */
+	function placeCharacter(char:Character):Void
+	{
+		var wx:Float = char.x + char.positionArray[0];
+		var wy:Float = char.y + char.positionArray[1];
+		var w:Float = char.width;
+		var h:Float = char.height;
+		var cx:Float = FlxG.width / 2;
+		var cy:Float = FlxG.height / 2;
+
+		char.scale.x *= CHAR_ZOOM;
+		char.scale.y *= CHAR_ZOOM;
+
+		char.x = cx + (wx + w / 2 - cx) * CHAR_ZOOM - w / 2;
+		char.y = cy + (wy + h / 2 - cy) * CHAR_ZOOM - h / 2;
+	}
+
 	function updateTexts()
 	{
-		title.text = curCharacter == -1 ? "(NONE)" : charactersList[curCharacter][0].replace('-', ' ');
+		var entry = getEntry(curCharacter);
+
+		if (entry == null)
+			title.text = curCharacter == -1 ? "(NONE)" : "-";
+		else
+			title.text = StringTools.replace(entry[0], '-', ' ');
 		title.x = FlxG.width / 2 - title.width / 2;
 
 		if (isEquipped(curCharacter))
@@ -765,12 +966,19 @@ class SkinsState extends MusicBeatState
 		}
 		else
 		{
-			charSelect.text = 'Press ACCEPT to select!';
-			charSelect.alpha = 0.8;
+			charSelect.text = 'SELECT';
+			charSelect.alpha = 0.9;
 		}
 
 		charInfo.visible = false;
 		charInfo.text = '';
+
+		if (charactersList.length == 0)
+		{
+			charInfo.text = 'No characters found!\n' + (scanLog == '' ? 'Checked: ' + BASE_CHARACTER_DIRS.join(', ') : scanLog);
+			charInfo.visible = true;
+			charInfo.y = FlxG.height - 100 - charInfo.height;
+		}
 
 		if (charactersWithWeeks.contains(curCharacter))
 		{
@@ -778,9 +986,9 @@ class SkinsState extends MusicBeatState
 			charInfo.visible = true;
 		}
 
-		if (charactersList[curCharacter] != null)
+		if (entry != null)
 		{
-			final charId = charactersList[curCharacter][0] + ':' + charactersList[curCharacter][3];
+			final charId = entry[0] + ':' + entry[3];
 			if (ClientPrefs.data.favSkins != null && ClientPrefs.data.favSkins.contains(charId))
 			{
 				charInfo.text += (charInfo.text.length > 0 ? ' ' : '') + '(Favorite Character)';
@@ -790,11 +998,13 @@ class SkinsState extends MusicBeatState
 	}
 
 	var colorTweens:Array<FlxTween> = [];
+
 	function tweenColor(hueColor:FlxColor)
 	{
 		if (colorTweens != null)
 			for (tween in colorTweens)
 				tween.cancel();
+		colorTweens = [];
 
 		var color = new FlxColor(hueColor);
 		color.lightness = Math.min(0.7, color.lightness);
@@ -813,13 +1023,15 @@ class SkinsState extends MusicBeatState
 
 	function isEquipped(i:Int):Bool
 	{
-		if (ClientPrefs.data.currentSkin == null)
-			return charactersList[i] == null;
+		var entry = getEntry(i);
 
-		if (charactersList[i] == null)
+		if (ClientPrefs.data.currentSkin == null)
+			return entry == null;
+
+		if (entry == null)
 			return false;
 
-		for (index => item in charactersList[i])
+		for (index => item in entry)
 		{
 			if (item != ClientPrefs.data.currentSkin[index])
 				return false;
@@ -855,21 +1067,10 @@ class SkinsState extends MusicBeatState
 
 	override function destroy()
 	{
-		try { removeTouchPad(); } catch (e:Dynamic) {}
 		if (music != null)
 		{
 			music.stop();
 			music = null;
-		}
-		if (characterCamera != null)
-		{
-			FlxG.cameras.remove(characterCamera);
-			characterCamera = null;
-		}
-		if (hud != null)
-		{
-			FlxG.cameras.remove(hud);
-			hud = null;
 		}
 		super.destroy();
 	}
