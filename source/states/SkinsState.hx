@@ -134,6 +134,7 @@ class SkinsState extends MusicBeatState
 		FlxG.cameras.add(hud = new FlxCamera(), false);
 		characterCamera.bgColor.alpha = 0;
 		hud.bgColor.alpha = 0;
+		hud.bgColor = 0x00000000;
 		characterCamera.zoom = 0.8;
 
 		camFollow = new FlxObject(FlxG.width / 2, FlxG.height / 2 - 200, 1, 1);
@@ -297,12 +298,12 @@ class SkinsState extends MusicBeatState
 		setCharacter(0);
 
 		#if mobile
-		try
+		addTouchPad('LEFT_RIGHT', 'A_B');
+		if (touchPad != null)
 		{
-			addTouchPad('LEFT_RIGHT', 'A_B');
-			addTouchPadCamera();
+			touchPad.cameras = [hud];
+			try { addTouchPadCamera(); } catch (e:Dynamic) {}
 		}
-		catch (e:Dynamic) {}
 		#end
 
 		super.create();
@@ -313,44 +314,63 @@ class SkinsState extends MusicBeatState
 		charactersList = [];
 		charactersWithWeeks = [];
 
-		for (origin in [null].concat(Mods.parseList().enabled))
+		var origins:Array<String> = [null];
+		#if MODS_ALLOWED
+		try
 		{
-			var characters:String;
-			var charactersWeeks:String;
+			for (m in Mods.parseList().enabled)
+				origins.push(m);
+		}
+		catch (e:Dynamic) {}
+		#end
+
+		for (origin in origins)
+		{
+			var charactersDir:String;
+			var charactersWeeksDir:String;
 
 			if (origin == null)
 			{
 				Mods.loadTopMod();
-				characters = 'assets/characters/';
-				charactersWeeks = 'assets/characters_weeks/';
+				// Desktop path + Android-friendly fallbacks
+				charactersDir = 'assets/characters/';
+				if (!FileSystem.exists(charactersDir))
+					charactersDir = Paths.getLibraryPath('characters/', 'shared');
+				if (!FileSystem.exists(charactersDir))
+					charactersDir = Paths.getLibraryPath('characters/', 'preload');
+				charactersWeeksDir = 'assets/characters_weeks/';
 			}
 			else
 			{
 				Mods.currentModDirectory = origin;
-				characters = Paths.mods(origin + '/characters/');
-				charactersWeeks = Paths.mods(origin + '/characters_weeks/');
+				charactersDir = Paths.mods(origin + '/characters/');
+				charactersWeeksDir = Paths.mods(origin + '/characters_weeks/');
 			}
 
-			if (!FileSystem.exists(characters))
+			if (charactersDir == null || !FileSystem.exists(charactersDir))
 				continue;
 
-			var charSkipSearch = [];
+			var charSkipSearch:Array<String> = [];
 
-			function addCharacter(characterName:String, leftSuffix:String, rightSuffix:String, origin:String):Bool
+			function addCharacter(characterName:String, leftSuffix:String, rightSuffix:String, org:String):Bool
 			{
 				if (BLACKLISTED_CHARACTERS.contains(characterName))
 					return false;
-
 				for (suffix in SKIP_SUFFICES)
 					if (characterName.endsWith(suffix))
 						return false;
 
-				charactersList.push([characterName, leftSuffix, rightSuffix, origin == null ? '' : origin]);
+				var modFolder = (org == null) ? '' : org;
+				charactersList.push([characterName, leftSuffix, rightSuffix, modFolder]);
 				charSkipSearch.push(characterName + leftSuffix);
 				charSkipSearch.push(characterName + rightSuffix);
 
-				if (FileSystem.exists(Path.join([charactersWeeks, characterName + ".json"])))
-					charactersWithWeeks.push(charactersList.length - 1);
+				try
+				{
+					if (FileSystem.exists(Path.join([charactersWeeksDir, characterName + ".json"])))
+						charactersWithWeeks.push(charactersList.length - 1);
+				}
+				catch (e:Dynamic) {}
 
 				if (isEquipped(charactersList.length - 1))
 					curCharacter = charactersList.length - 1;
@@ -358,28 +378,60 @@ class SkinsState extends MusicBeatState
 				return true;
 			}
 
-			for (file in FileSystem.readDirectory(characters))
-			{
-				var filePath = Path.join([characters, file]);
-				var character:String = file.substr(0, file.length - 5);
+			var files:Array<String> = [];
+			try { files = FileSystem.readDirectory(charactersDir); } catch (e:Dynamic) { files = []; }
 
-				if (charSkipSearch.contains(character) || FileSystem.isDirectory(filePath) || !file.endsWith('.json'))
+			// APK / assets fallback: list json via openfl when folder empty
+			if (files.length == 0)
+			{
+				try
+				{
+					for (path in openfl.utils.Assets.list(openfl.utils.AssetType.TEXT))
+					{
+						if (path.indexOf('characters/') == -1 || !StringTools.endsWith(path, '.json'))
+							continue;
+						if (path.indexOf('characters_weeks') != -1)
+							continue;
+						var base = path;
+						var idx = base.lastIndexOf('/');
+						if (idx >= 0) base = base.substr(idx + 1);
+						files.push(base);
+					}
+				}
+				catch (e:Dynamic) {}
+			}
+
+			for (file in files)
+			{
+				if (file == null || !StringTools.endsWith(file, '.json'))
+					continue;
+
+				var character:String = file.substr(0, file.length - 5);
+				if (charSkipSearch.contains(character))
 					continue;
 
 				var hasAdded = false;
 
 				for (playableSuffix in RIGHT_SUFFIX)
 				{
-					if (character.endsWith(playableSuffix))
+					if (StringTools.endsWith(character, playableSuffix))
 					{
 						final cutCharName = character.substr(0, character.length - playableSuffix.length);
 						var leftSuffix = '';
 						for (opponentSuffix in LEFT_SUFFIX)
 						{
-							if (FileSystem.exists(Path.join([characters, '${cutCharName + opponentSuffix}.json'])))
-								leftSuffix = opponentSuffix;
+							var tryPath = Path.join([charactersDir, cutCharName + opponentSuffix + '.json']);
+							var existsOpp = FileSystem.exists(tryPath);
+							if (!existsOpp)
+								existsOpp = openfl.utils.Assets.exists('characters/' + cutCharName + opponentSuffix + '.json')
+									|| openfl.utils.Assets.exists('shared:characters/' + cutCharName + opponentSuffix + '.json');
+							if (existsOpp) leftSuffix = opponentSuffix;
 						}
-						if (FileSystem.exists(Path.join([characters, '${cutCharName}.json'])))
+						var baseExists = FileSystem.exists(Path.join([charactersDir, cutCharName + '.json']));
+						if (!baseExists)
+							baseExists = openfl.utils.Assets.exists('characters/' + cutCharName + '.json')
+								|| openfl.utils.Assets.exists('shared:characters/' + cutCharName + '.json');
+						if (baseExists)
 						{
 							hasAdded = addCharacter(cutCharName, leftSuffix, playableSuffix, origin);
 							break;
@@ -390,21 +442,33 @@ class SkinsState extends MusicBeatState
 
 				for (opponentSuffix in LEFT_SUFFIX)
 				{
-					if (character.endsWith(opponentSuffix))
+					if (StringTools.endsWith(character, opponentSuffix))
 					{
 						final cutCharName = character.substr(0, character.length - opponentSuffix.length);
 						var rightSuffix = '';
 						for (playableSuffix in RIGHT_SUFFIX)
 						{
-							if (FileSystem.exists(Path.join([characters, '${cutCharName + playableSuffix}.json'])))
-								rightSuffix = playableSuffix;
+							var tryPath = Path.join([charactersDir, cutCharName + playableSuffix + '.json']);
+							var existsPl = FileSystem.exists(tryPath);
+							if (!existsPl)
+								existsPl = openfl.utils.Assets.exists('characters/' + cutCharName + playableSuffix + '.json')
+									|| openfl.utils.Assets.exists('shared:characters/' + cutCharName + playableSuffix + '.json');
+							if (existsPl) rightSuffix = playableSuffix;
 						}
-						if (rightSuffix != '' && FileSystem.exists(Path.join([characters, '${cutCharName + rightSuffix}.json'])))
+						if (rightSuffix != '')
 						{
 							hasAdded = addCharacter(cutCharName, opponentSuffix, rightSuffix, origin);
 							break;
 						}
 					}
+				}
+
+				// plain character.json with matching -player sibling already handled;
+				// also accept standalone playable names without suffix pair (bf, etc.)
+				if (!hasAdded && !character.contains('-'))
+				{
+					// prefer as center name with empty suffixes (same json for both sides)
+					addCharacter(character, '', '', origin);
 				}
 			}
 		}
@@ -567,6 +631,7 @@ class SkinsState extends MusicBeatState
 
 	function leaveMenu()
 	{
+		try { removeTouchPad(); } catch (e:Dynamic) {}
 		isExiting = true;
 		camera.follow(camFollow, LOCKON, 0.01);
 		characterCamera.follow(camFollow, LOCKON, 0.01);
@@ -786,8 +851,22 @@ class SkinsState extends MusicBeatState
 
 	override function destroy()
 	{
-		super.destroy();
+		try { removeTouchPad(); } catch (e:Dynamic) {}
 		if (music != null)
+		{
 			music.stop();
+			music = null;
+		}
+		if (characterCamera != null)
+		{
+			FlxG.cameras.remove(characterCamera);
+			characterCamera = null;
+		}
+		if (hud != null)
+		{
+			FlxG.cameras.remove(hud);
+			hud = null;
+		}
+		super.destroy();
 	}
 }
