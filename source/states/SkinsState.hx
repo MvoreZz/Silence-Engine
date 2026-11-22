@@ -335,10 +335,14 @@ class SkinsState extends MusicBeatState
 				// Desktop path + Android-friendly fallbacks
 				charactersDir = 'assets/characters/';
 				if (!FileSystem.exists(charactersDir))
-					charactersDir = Paths.getLibraryPath('characters/', 'shared');
+					charactersDir = Paths.getSharedPath('characters/');
 				if (!FileSystem.exists(charactersDir))
-					charactersDir = Paths.getLibraryPath('characters/', 'preload');
+					charactersDir = Paths.getPreloadPath('characters/');
+				if (!FileSystem.exists(charactersDir))
+					charactersDir = Paths.getFolderPath('characters/', 'shared');
 				charactersWeeksDir = 'assets/characters_weeks/';
+				if (!FileSystem.exists(charactersWeeksDir))
+					charactersWeeksDir = Paths.getSharedPath('characters_weeks/');
 			}
 			else
 			{
