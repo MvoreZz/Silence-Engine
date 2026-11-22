@@ -24,6 +24,8 @@ import states.TitleState;
 	public var smoothHealthBar:Bool = true; // P-Slice style lerp health bar
 	public var hideErrors:Bool = false; // Visuals: hide on-screen script/debug errors
 	public var graphicsQuality:String = 'Low'; // set by analyzeDeviceQuality on load unless Custom
+	public var currentSkin:Array<String> = null; // [name, leftSuffix, rightSuffix, modFolder]
+	public var favSkins:Array<String> = []; // format: 'charactername:modfolder'
 	
 	public var downScroll:Bool = false;
 	public var middleScroll:Bool = false;
@@ -120,6 +122,7 @@ class ClientPrefs {
 		
 		'accept'		=> [SPACE, ENTER],
 		'back'			=> [BACKSPACE, ESCAPE],
+		'fav'			=> [Q],
 		'pause'			=> [ENTER, ESCAPE],
 		'reset'			=> [R],
 		
