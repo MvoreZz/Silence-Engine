@@ -413,6 +413,7 @@ class FreeplayState extends MusicBeatState
 		{
 			persistentUpdate = false;
 			FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+			removeTouchPad();
 			MusicBeatState.switchState(new states.SkinsState());
 			return;
 		}
@@ -613,6 +614,7 @@ class FreeplayState extends MusicBeatState
 						touchPad.remove(touchPad.buttonS, true);
 				}
 				touchPad.buttonS = touchPad.createButton(sx, sy, 's', 0xFF66CCFF, touchPad.buttonS != null ? touchPad.buttonS.IDs : [MobileInputID.S]);
+				touchPad.buttonS.cameras = touchPad.cameras;
 				touchPad.add(touchPad.buttonS);
 				touchPad.updateTrackedButtons();
 			}
