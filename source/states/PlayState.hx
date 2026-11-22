@@ -268,6 +268,39 @@ class PlayState extends MusicBeatState
 	public function getOppChar():Character
 		return playsAsBF() ? dad : boyfriend;
 
+	/**
+	 * Builds a character. The skin picked in SkinsState (ClientPrefs.data.currentSkin =
+	 * [name, leftSuffix, rightSuffix, modFolder]) replaces ONLY the character you play:
+	 * BF in normal mode, Dad in Play Opponent. Dad side uses the left suffix, BF side the right one.
+	 */
+	function createSkinnedCharacter(chartName:String, forDad:Bool, isPlayerFlag:Bool):Character
+	{
+		var skin:Array<String> = ClientPrefs.data.currentSkin;
+		var yourSlotIsDad:Bool = opponentMode;
+
+		if (skin != null && skin.length >= 4 && skin[0] != null && skin[0] != '' && forDad == yourSlotIsDad)
+		{
+			var suffix:String = forDad ? skin[1] : skin[2];
+			var skinName:String = skin[0] + (suffix == null ? '' : suffix);
+
+			var prevMod:String = Mods.currentModDirectory;
+			try
+			{
+				Mods.currentModDirectory = (skin[3] == null) ? '' : skin[3];
+				var skinned:Character = isPlayerFlag ? new Character(0, 0, skinName, true) : new Character(0, 0, skinName);
+				Mods.currentModDirectory = prevMod;
+				return skinned;
+			}
+			catch (e:Dynamic)
+			{
+				trace('Skin "' + skinName + '" failed to load, using chart character: ' + e);
+			}
+			Mods.currentModDirectory = prevMod;
+		}
+
+		return isPlayerFlag ? new Character(0, 0, chartName, true) : new Character(0, 0, chartName);
+	}
+
 	/** Vocal track of the character YOU play (BF = vocals, Dad = opponentVocals if it exists). */
 	public function getPlayerVocals():FlxSound
 	{
@@ -552,11 +585,11 @@ class PlayState extends MusicBeatState
 			gfGroup.add(gf);
 		}
 
-		dad = new Character(0, 0, SONG.player2);
+		dad = createSkinnedCharacter(SONG.player2, true, false);
 		startCharacterPos(dad, true);
 		dadGroup.add(dad);
 
-		boyfriend = new Character(0, 0, SONG.player1, true);
+		boyfriend = createSkinnedCharacter(SONG.player1, false, true);
 		startCharacterPos(boyfriend);
 		boyfriendGroup.add(boyfriend);
 		//  Play Opponent: who is "player" character
