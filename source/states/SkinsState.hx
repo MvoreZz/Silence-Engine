@@ -345,9 +345,12 @@ class SkinsState extends MusicBeatState
 		addTouchButton('A', 'accept', bx + 3 * (bs + gap), by, bs, FlxColor.fromRGB(220, 50, 50));
 		#end
 
-		if (animateLog != '' && !ClientPrefs.data.lowQuality)
+		if ((animateLog != '' && !ClientPrefs.data.lowQuality) || touchLog != '')
 		{
-			var dbg = new FlxText(10, 104, FlxG.width - 20, 'Animate atlas problem:\n' + animateLog);
+			var dbgText:String = '';
+			if (animateLog != '') dbgText += 'Animate atlas problem:\n' + animateLog;
+			if (touchLog != '') dbgText += 'Touch button PNG not found for: ' + touchLog + '(drawn square used)\n';
+			var dbg = new FlxText(10, 104, FlxG.width - 20, dbgText);
 			dbg.setFormat("VCR OSD Mono", 12, FlxColor.YELLOW, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 			dbg.alpha = 0.7;
 			dbg.scrollFactor.set(0, 0);
@@ -367,70 +370,247 @@ class SkinsState extends MusicBeatState
 
 	var animateLog:String = '';
 
+	static var ATLAS_IMAGE_DIRS = [
+		'assets/base_game/shared/images/',
+		'assets/shared/images/',
+		'assets/base_game/images/',
+		'assets/images/'
+	];
+
+	/** Folder of an animate atlas on disk (the atlases are FOLDERS: Animation.json + spritemap). */
+	function findAtlasDir(folder:String):String
+	{
+		#if sys
+		for (prefix in ATLAS_IMAGE_DIRS)
+		{
+			var dir = prefix + folder;
+			try { if (FileSystem.exists(dir) && FileSystem.isDirectory(dir)) return dir; } catch (e:Dynamic) {}
+		}
+		#end
+		return null;
+	}
+
+	function createAnimateInstance(cls:Class<Dynamic>, x:Float, y:Float, path:String):Dynamic
+	{
+		var tries:Array<Array<Dynamic>> = (path != null) ? [[x, y, path, null], [x, y, path]] : [[x, y, null, null], [x, y, null], [x, y]];
+		var last:Dynamic = 'could not create instance';
+		for (a in tries)
+		{
+			try { return Type.createInstance(cls, a); }
+			catch (e:Dynamic) { last = e; }
+		}
+		throw last;
+	}
+
+	function callPathsLoader(spr:Dynamic, folder:String):Void
+	{
+		var pathsCls:Class<Dynamic> = Type.resolveClass('backend.Paths');
+		if (pathsCls == null) pathsCls = Type.resolveClass('Paths');
+		var loader:Dynamic = (pathsCls != null) ? Reflect.field(pathsCls, 'loadAnimateAtlas') : null;
+		if (loader == null)
+			throw 'Paths.loadAnimateAtlas not found';
+
+		try { Reflect.callMethod(pathsCls, loader, [spr, folder, null, null]); }
+		catch (e:Dynamic) { Reflect.callMethod(pathsCls, loader, [spr, folder]); }
+	}
+
 	/**
-	 * Creates a Flash/Animate atlas sprite (crowd, speakers, gf...) WITHOUT hard-linking the class,
-	 * so the file still compiles on engines where FlxAnimate is named differently.
-	 * Returns null (and fills animateLog) when it can't be created.
+	 * Creates a Flash/Animate atlas sprite (crowd, speakers, gf...) without hard-linking the class.
+	 * Tries: Paths.loadAnimateAtlas -> loadAtlas(folder on disk) -> constructor(folder on disk).
+	 * Returns null (and fills animateLog with the exact step that failed) when nothing works.
 	 */
 	function makeAnimate(x:Float, y:Float, folder:String, symbol:String, scroll:Float):FlxSprite
 	{
-		try
+		var errors:String = '';
+		var absDir:String = findAtlasDir(folder);
+		if (absDir == null)
+			errors += '\n  folder not found in: ' + ATLAS_IMAGE_DIRS.join(', ');
+
+		for (cn in ['flxanimate.FlxAnimate', 'flxanimate.PsychFlxAnimate'])
 		{
-			var animCls:Class<Dynamic> = Type.resolveClass('flxanimate.FlxAnimate');
-			if (animCls == null)
+			var cls:Class<Dynamic> = Type.resolveClass(cn);
+			if (cls == null)
+				continue;
+
+			for (mode in 1...4)
 			{
-				animateLog += 'FlxAnimate class not found\n';
-				return null;
+				var step:String = 'create';
+				try
+				{
+					var spr:Dynamic = createAnimateInstance(cls, x, y, (mode == 3) ? absDir : null);
+					if (spr == null) throw 'instance is null';
+
+					step = 'load';
+					if (mode == 1)
+						callPathsLoader(spr, folder);
+					else if (absDir == null)
+						throw 'no folder on disk';
+					else if (mode == 2)
+						spr.loadAtlas(absDir);
+
+					step = 'anim';
+					if (spr.anim == null) throw 'anim is null';
+
+					step = 'symbol';
+					try { spr.anim.addBySymbol('beat', symbol, 24, true); }
+					catch (e:Dynamic) { errors += '\n  (symbol "' + symbol + '": ' + Std.string(e) + ')'; }
+
+					step = 'play';
+					spr.anim.play('beat');
+					spr.antialiasing = ClientPrefs.data.antialiasing;
+					spr.scrollFactor.set(scroll, scroll);
+					add(spr);
+					return cast spr;
+				}
+				catch (e:Dynamic)
+				{
+					errors += '\n  ' + cn.substr(cn.lastIndexOf('.') + 1) + ' #' + mode + ' ' + step + ': ' + Std.string(e);
+				}
 			}
-
-			var pathsCls:Class<Dynamic> = Type.resolveClass('backend.Paths');
-			if (pathsCls == null) pathsCls = Type.resolveClass('Paths');
-			var loader:Dynamic = (pathsCls != null) ? Reflect.field(pathsCls, 'loadAnimateAtlas') : null;
-			if (loader == null)
-			{
-				animateLog += 'Paths.loadAnimateAtlas not found\n';
-				return null;
-			}
-
-			var spr:Dynamic = null;
-			try { spr = Type.createInstance(animCls, [x, y, null, null]); }
-			catch (e:Dynamic) { spr = Type.createInstance(animCls, [x, y]); }
-
-			try { Reflect.callMethod(pathsCls, loader, [spr, folder, null, null]); }
-			catch (e:Dynamic) { Reflect.callMethod(pathsCls, loader, [spr, folder]); }
-
-			spr.antialiasing = ClientPrefs.data.antialiasing;
-			spr.anim.addBySymbol('beat', symbol, 24, true);
-			spr.anim.play('beat');
-			spr.scrollFactor.set(scroll, scroll);
-			add(spr);
-			return cast spr;
 		}
-		catch (e:Dynamic)
-		{
-			animateLog += folder + ': ' + Std.string(e) + '\n';
-		}
+
+		animateLog += folder + errors + '\n';
 		return null;
 	}
 
 	var touchBtns:Array<{spr:FlxSprite, action:String}> = [];
+	var touchLog:String = '';
 
+	/** letter (lowercase) -> png path, found once by scanning the engine's mobile/touchpad assets */
+	static var touchPngCache:Map<String, String> = null;
+
+	static function indexTouchPngs():Void
+	{
+		touchPngCache = new Map();
+		#if sys
+		var skip = ['songs', 'music', 'sounds', 'videos', 'fonts', 'data', 'characters', 'characters_weeks', 'weeks', 'stages',
+			'scripts', 'custom_events', 'custom_notetypes', 'shaders', 'achievements', 'locales', 'jsons'];
+
+		function walk(dir:String, depth:Int, inTouch:Bool):Void
+		{
+			if (depth > 7) return;
+			var items:Array<String> = [];
+			try { items = FileSystem.readDirectory(dir); } catch (e:Dynamic) { return; }
+
+			for (it in items)
+			{
+				var full = dir + '/' + it;
+				var low = it.toLowerCase();
+				var isDir = false;
+				try { isDir = FileSystem.isDirectory(full); } catch (e:Dynamic) {}
+
+				if (isDir)
+				{
+					if (skip.contains(low)) continue;
+					walk(full, depth + 1, inTouch || low.indexOf('touch') != -1 || low.indexOf('mobile') != -1);
+				}
+				else if (inTouch && StringTools.endsWith(low, '.png'))
+				{
+					var base = low.substr(0, low.length - 4);
+					var old = touchPngCache.get(base);
+					// prefer files inside a "touchpad" folder
+					if (old == null || (old.toLowerCase().indexOf('touchpad') == -1 && full.toLowerCase().indexOf('touchpad') != -1))
+						touchPngCache.set(base, full);
+				}
+			}
+		}
+		walk('assets', 0, false);
+		#end
+	}
+
+	function loadPngSprite(path:String, size:Int, x:Float, y:Float):FlxSprite
+	{
+		#if sys
+		try
+		{
+			var bmd = openfl.display.BitmapData.fromFile(path);
+			if (bmd == null) return null;
+			var sp = new FlxSprite(x, y);
+			sp.loadGraphic(bmd);
+			sp.setGraphicSize(size);
+			sp.updateHitbox();
+			sp.x = x;
+			sp.y = y;
+			sp.antialiasing = ClientPrefs.data.antialiasing;
+			sp.scrollFactor.set(0, 0);
+			add(sp);
+			return sp;
+		}
+		catch (e:Dynamic) {}
+		#end
+		return null;
+	}
+
+	function dirOf(path:String):String
+	{
+		if (path == null) return null;
+		var i = path.lastIndexOf('/');
+		return i == -1 ? '' : path.substr(0, i);
+	}
+
+	/** Uses the engine's own mobile button PNGs; falls back to a drawn square only if they can't be found. */
 	function addTouchButton(letter:String, action:String, x:Float, y:Float, size:Int, color:FlxColor):Void
 	{
-		var b = new FlxSprite(x, y);
-		b.makeGraphic(size, size, FlxColor.WHITE);
-		b.color = color;
-		b.alpha = 0.8;
-		b.scrollFactor.set(0, 0);
-		add(b);
+		if (touchPngCache == null)
+			indexTouchPngs();
 
-		var t = new FlxText(x, 0, size, letter);
-		t.setFormat("VCR OSD Mono", 40, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		t.y = y + (size - t.height) / 2;
-		t.scrollFactor.set(0, 0);
-		add(t);
+		var glyphPath:String = touchPngCache.get(letter.toLowerCase());
+		var bgPath:String = touchPngCache.get('bg');
+		var main:FlxSprite = null;
+		var needLetterText:Bool = false;
 
-		touchBtns.push({spr: b, action: action});
+		// background + glyph in the same folder (tinted background style)
+		if (glyphPath != null && bgPath != null && dirOf(glyphPath) == dirOf(bgPath))
+		{
+			main = loadPngSprite(bgPath, size, x, y);
+			if (main != null)
+			{
+				main.color = color;
+				loadPngSprite(glyphPath, size, x, y);
+			}
+		}
+
+		// glyph only: it is the whole button
+		if (main == null && glyphPath != null)
+			main = loadPngSprite(glyphPath, size, x, y);
+
+		// background exists but this letter has no png (e.g. Q): bg + text
+		if (main == null && bgPath != null)
+		{
+			main = loadPngSprite(bgPath, size, x, y);
+			if (main != null)
+			{
+				main.color = color;
+				needLetterText = true;
+			}
+		}
+
+		// nothing found: simple square
+		if (main == null)
+		{
+			main = new FlxSprite(x, y);
+			main.makeGraphic(size, size, FlxColor.WHITE);
+			main.color = color;
+			main.alpha = 0.8;
+			main.scrollFactor.set(0, 0);
+			add(main);
+			needLetterText = true;
+			if (touchLog.indexOf(letter) == -1)
+				touchLog += letter + ' ';
+		}
+		else if (glyphPath == null && !needLetterText)
+			needLetterText = true;
+
+		if (needLetterText)
+		{
+			var t = new FlxText(x, 0, size, letter);
+			t.setFormat("VCR OSD Mono", 40, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			t.y = y + (main.height - t.height) / 2;
+			t.scrollFactor.set(0, 0);
+			add(t);
+		}
+
+		touchBtns.push({spr: main, action: action});
 	}
 
 	function getEntry(i:Int):Array<String>
@@ -442,10 +622,50 @@ class SkinsState extends MusicBeatState
 	//  Character discovery
 	// ------------------------------------------------------------------
 
+	var weeksKeys:Map<String, Bool> = new Map();
+
+	/** NONE is always first, then bf, pico, tankman, then mod characters in scan order. */
+	function finalizeList():Void
+	{
+		var order = ['bf', 'pico', 'tankman'];
+		var items:Array<{e:Array<String>, i:Int}> = [];
+		for (i in 0...charactersList.length)
+			items.push({e: charactersList[i], i: i});
+
+		function weight(e:Array<String>):Int
+		{
+			if (e[3] == '')
+			{
+				var k = order.indexOf(e[0]);
+				if (k != -1) return k;
+			}
+			return 100;
+		}
+
+		items.sort(function(a, b)
+		{
+			var wa = weight(a.e);
+			var wb = weight(b.e);
+			return (wa != wb) ? (wa - wb) : (a.i - b.i);
+		});
+
+		charactersList = [for (it in items) it.e];
+		charactersWithWeeks = [];
+		for (i in 0...charactersList.length)
+		{
+			var e = charactersList[i];
+			if (weeksKeys.exists(e[0] + '|' + e[3]))
+				charactersWithWeeks.push(i);
+			if (isEquipped(i))
+				curCharacter = i;
+		}
+	}
+
 	function scanCharacters()
 	{
 		charactersList = [];
 		charactersWithWeeks = [];
+		weeksKeys = new Map();
 		scanLog = '';
 
 		var seen:Map<String, Bool> = new Map();
@@ -489,6 +709,7 @@ class SkinsState extends MusicBeatState
 		catch (e:Dynamic) {}
 
 		Mods.loadTopMod();
+		finalizeList();
 	}
 
 	function scanDirectory(charactersDir:String, charactersWeeksDir:String, origin:String, seen:Map<String, Bool>):Void
@@ -543,12 +764,9 @@ class SkinsState extends MusicBeatState
 			try
 			{
 				if (charactersWeeksDir != null && FileSystem.exists(Path.join([charactersWeeksDir, characterName + ".json"])))
-					charactersWithWeeks.push(charactersList.length - 1);
+					weeksKeys.set(characterName + '|' + modFolder, true);
 			}
 			catch (e:Dynamic) {}
-
-			if (isEquipped(charactersList.length - 1))
-				curCharacter = charactersList.length - 1;
 
 			return true;
 		}
@@ -654,14 +872,72 @@ class SkinsState extends MusicBeatState
 		try { acceptSound = FlxG.sound.play(Paths.sound('CS_confirm'), 0.8); } catch (e:Dynamic) {}
 		if (music != null) music.stop();
 
-		if (character.members[0] != null)
-			character.members[0].playAnim("hey", true);
-
-		FlxTween.tween(camera, {zoom: camera.zoom + 0.15}, 0.4, {ease: FlxEase.elasticInOut});
+		playCheer();
 
 		// wait for the cheer ("hey") animation, THEN close slowly (handled in update)
 		stopUpdates = true;
 		heyWait = 0;
+	}
+
+	var cheerAnim:String = '';
+
+	/** Works for normal (sparrow) AND atlas characters, without needing a specific Character API. */
+	function charHasAnim(c:Character, name:String):Bool
+	{
+		try { if (c.animation != null && c.animation.getByName(name) != null) return true; } catch (e:Dynamic) {}
+		try
+		{
+			var f:Dynamic = Reflect.field(c, 'hasAnimation');
+			if (f != null && Reflect.callMethod(c, f, [name]) == true) return true;
+		}
+		catch (e:Dynamic) {}
+		try
+		{
+			var m:Dynamic = Reflect.field(c, 'animOffsets');
+			if (m != null && m.exists(name) == true) return true;
+		}
+		catch (e:Dynamic) {}
+		return false;
+	}
+
+	/**
+	 * Cheer for EVERY character: uses "hey" (or cheer/celebrate/taunt) when the character has it,
+	 * otherwise raises the arms (singUP) and does two little hops.
+	 */
+	function playCheer():Void
+	{
+		var c = character.members[0];
+		if (c == null) return;
+
+		cheerAnim = '';
+		for (name in ['hey', 'cheer', 'celebrate', 'taunt'])
+		{
+			if (charHasAnim(c, name))
+			{
+				cheerAnim = name;
+				break;
+			}
+		}
+
+		if (cheerAnim != '')
+		{
+			c.playAnim(cheerAnim, true);
+			return;
+		}
+
+		c.playAnim('singUP', true);
+		var baseY:Float = c.y;
+		FlxTween.cancelTweensOf(c);
+		FlxTween.tween(c, {y: baseY - 45}, 0.18, {ease: FlxEase.quadOut, onComplete: function(_)
+		{
+			FlxTween.tween(c, {y: baseY}, 0.22, {ease: FlxEase.quadIn, onComplete: function(_)
+			{
+				FlxTween.tween(c, {y: baseY - 30}, 0.15, {ease: FlxEase.quadOut, onComplete: function(_)
+				{
+					FlxTween.tween(c, {y: baseY}, 0.2, {ease: FlxEase.quadIn});
+				}});
+			}});
+		}});
 	}
 
 	function goBack():Void
@@ -800,13 +1076,13 @@ class SkinsState extends MusicBeatState
 
 			var c = character.members[0];
 			var done:Bool = heyWait > 2.5;
-			if (c != null && c.animation.curAnim != null && c.animation.curAnim.name == 'hey')
+			if (cheerAnim != '' && c != null && c.animation.curAnim != null && c.animation.curAnim.name == cheerAnim)
 			{
 				if (heyWait > 0.3 && c.animation.curAnim.finished)
 					done = true;
 			}
-			else if (heyWait > 1.0)
-				done = true; // this character has no "hey" animation
+			else if (heyWait > 1.2)
+				done = true; // hop-cheer finished
 
 			if (done)
 			{
@@ -1045,24 +1321,39 @@ class SkinsState extends MusicBeatState
 	}
 
 	/**
-	 * The original used a second camera with zoom 0.8 around the screen center.
-	 * We emulate the same result on the default camera by scaling the sprite and
-	 * moving it so its visual center lands where the zoomed camera would put it.
+	 * Centers the character on the stage: horizontally on the screen center, feet on a fixed floor,
+	 * scaled like the original 0.8 camera zoom (and smaller if it would not fit between the bars).
 	 */
 	function placeCharacter(char:Character):Void
 	{
-		var wx:Float = char.x + char.positionArray[0];
-		var wy:Float = char.y + char.positionArray[1];
-		var w:Float = char.width;
-		var h:Float = char.height;
-		var cx:Float = FlxG.width / 2;
-		var cy:Float = FlxG.height / 2;
+		final floorY:Float = FlxG.height - 100 - 30;
+		final centerX:Float = FlxG.width / 2;
 
-		char.scale.x *= CHAR_ZOOM;
-		char.scale.y *= CHAR_ZOOM;
+		var fw:Float = char.frameWidth;
+		var fh:Float = char.frameHeight;
 
-		char.x = cx + (wx + w / 2 - cx) * CHAR_ZOOM - w / 2;
-		char.y = cy + (wy + h / 2 - cy) * CHAR_ZOOM - h / 2;
+		if (fw <= 0 || fh <= 0)
+		{
+			// atlas characters without a plain frame size: use the hitbox
+			char.scale.x *= CHAR_ZOOM;
+			char.scale.y *= CHAR_ZOOM;
+			char.x = centerX - char.width / 2;
+			char.y = floorY - char.height;
+			return;
+		}
+
+		var maxH:Float = FlxG.height - 100 - 100 - 40;
+		var f:Float = Math.min(CHAR_ZOOM, maxH / (fh * char.scale.y));
+		char.scale.x *= f;
+		char.scale.y *= f;
+
+		var sx:Float = char.scale.x;
+		var sy:Float = char.scale.y;
+		var left:Float = char.x - char.offset.x + char.origin.x * (1 - sx);
+		var top:Float = char.y - char.offset.y + char.origin.y * (1 - sy);
+
+		char.x += centerX - (left + fw * sx / 2);
+		char.y += floorY - (top + fh * sy);
 	}
 
 	function updateTexts()
