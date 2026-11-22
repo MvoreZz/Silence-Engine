@@ -267,6 +267,7 @@ class ClientPrefs {
 		if (FlxG.save.data.mute != null)
 			FlxG.sound.muted = FlxG.save.data.mute;
 
+		if (data.favSkins == null) data.favSkins = [];
 		if (data.graphicsQuality != 'Custom')
 		{
 			data.graphicsQuality = analyzeDeviceQuality();
