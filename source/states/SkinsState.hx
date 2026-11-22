@@ -88,11 +88,6 @@ class SkinsState extends MusicBeatState
 	var stageObjects:Array<FlxSprite> = [];
 
 	// touch ui
-	var btnBack:FlxSprite;
-	var btnSelect:FlxSprite;
-	var btnFlip:FlxSprite;
-	var btnBackText:FlxText;
-	var btnFlipText:FlxText;
 
 	var scanLog:String = '';
 
@@ -184,6 +179,8 @@ class SkinsState extends MusicBeatState
 				stageBg.scrollFactor.set(0.5, 0.5);
 				add(stageBg);
 
+				var stageCrowd:FlxSprite = makeAnimate(0, 240, 'charSelect/crowd', 'crowd', 0.7);
+
 				var stage = new FlxSprite(0, 390);
 				stage.antialiasing = ClientPrefs.data.antialiasing;
 				stage.frames = Paths.getSparrowAtlas('charSelect/charSelectStage');
@@ -194,6 +191,20 @@ class SkinsState extends MusicBeatState
 				stage.scrollFactor.set(0.9, 0.9);
 				add(stage);
 
+				var lights:Array<FlxSprite> = [];
+				try
+				{
+					for (lx in [200, 700])
+					{
+						var light = new FlxSprite(lx, 280).loadGraphic(Paths.image('charSelect/charLight'));
+						light.antialiasing = ClientPrefs.data.antialiasing;
+						light.scrollFactor.set(0.75, 0.75);
+						add(light);
+						lights.push(light);
+					}
+				}
+				catch (e:Dynamic) {}
+
 				var stageCurtain = new FlxSprite(0, 0).loadGraphic(Paths.image('charSelect/curtains'));
 				stageCurtain.setGraphicSize(Std.int(stageCurtain.width * 1.05));
 				stageCurtain.updateHitbox();
@@ -202,7 +213,14 @@ class SkinsState extends MusicBeatState
 				stageCurtain.scrollFactor.set(0.95, 0.1);
 				add(stageCurtain);
 
+				var stageSpeakers:FlxSprite = makeAnimate(-80, 440, 'charSelect/charSelectSpeakers', 'Speakers ALL', 0.95);
+				var defaultGirlfriend:FlxSprite = makeAnimate(-80, 440, 'charSelect/gfChill', 'GIRLFRIEND CS', 0.95);
+
 				stageObjects = [stageBg, stage, stageCurtain];
+				for (o in [stageCrowd, stageSpeakers, defaultGirlfriend])
+					if (o != null) stageObjects.push(o);
+				for (l in lights)
+					stageObjects.push(l);
 			}
 			catch (e:Dynamic) {}
 		}
@@ -284,19 +302,18 @@ class SkinsState extends MusicBeatState
 		arrowRight.x = arX = FlxG.width - arrowRight.width - 100;
 		add(arrowRight);
 
-		// ---- bottom bar: 3 touch buttons [BACK] [SELECT] [FLIP] ----
-		final third:Float = FlxG.width / 3;
-		final btnW:Int = Std.int(third - 30);
-		final btnH:Int = 64;
-		final btnY:Float = barDown.y + (barDown.height - btnH) / 2;
-
-		btnBack = makeButton(third * 0 + 15, btnY, btnW, btnH);
-		btnSelect = makeButton(third * 1 + 15, btnY, btnW, btnH);
-		btnFlip = makeButton(third * 2 + 15, btnY, btnW, btnH);
-
-		btnBackText = makeButtonText(btnBack, 'BACK', btnH);
-		charSelect = makeButtonText(btnSelect, 'SELECT', btnH);
-		btnFlipText = makeButtonText(btnFlip, 'FLIP SIDE', btnH);
+		// ---- bottom bar texts (like the original) ----
+		charSelect = new FlxText(0, 0, FlxG.width);
+		#if mobile
+		charSelect.text = 'Press A to select!';
+		#else
+		charSelect.text = 'Press ACCEPT to select!';
+		#end
+		charSelect.setFormat("VCR OSD Mono", 24, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		charSelect.y = barDown.y + barDown.height / 2 - charSelect.height / 2;
+		charSelect.alpha = 0.8;
+		charSelect.scrollFactor.set(0, 0);
+		add(charSelect);
 
 		charInfo = new FlxText(0, 0, FlxG.width);
 		charInfo.setFormat("VCR OSD Mono", 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
@@ -305,14 +322,37 @@ class SkinsState extends MusicBeatState
 		charInfo.visible = false;
 		add(charInfo);
 
-		#if !mobile
-		var tip1 = new FlxText(20, 0, FlxG.width, 'TAB - Flip side\nQ - Favorite\nRESET - None');
+		#if mobile
+		var tip1 = new FlxText(20, 0, 400, 'A - Select\nB - Back\nQ - Favorite skin\nC - Flip skin');
+		#else
+		var tip1 = new FlxText(20, 0, 400, 'TAB - Flip skin\nQ - Favorite skin\nRESET - None');
+		#end
 		tip1.setFormat("VCR OSD Mono", 14, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		tip1.y = barDown.y - 60;
-		tip1.alpha = 0.5;
+		tip1.y = barDown.y + (barDown.height - tip1.height) / 2;
+		tip1.alpha = 0.6;
 		tip1.scrollFactor.set(0, 0);
 		add(tip1);
+
+		#if mobile
+		// on-screen buttons, same idea as the original mobile layout: Q C B A
+		final bs:Int = 72;
+		final gap:Int = 12;
+		final by:Float = barDown.y + (barDown.height - bs) / 2;
+		var bx:Float = FlxG.width - 4 * (bs + gap);
+		addTouchButton('Q', 'fav', bx, by, bs, FlxColor.fromRGB(140, 90, 220));
+		addTouchButton('C', 'flip', bx + (bs + gap), by, bs, FlxColor.fromRGB(60, 190, 80));
+		addTouchButton('B', 'back', bx + 2 * (bs + gap), by, bs, FlxColor.fromRGB(230, 190, 40));
+		addTouchButton('A', 'accept', bx + 3 * (bs + gap), by, bs, FlxColor.fromRGB(220, 50, 50));
 		#end
+
+		if (animateLog != '' && !ClientPrefs.data.lowQuality)
+		{
+			var dbg = new FlxText(10, 104, FlxG.width - 20, 'Animate atlas problem:\n' + animateLog);
+			dbg.setFormat("VCR OSD Mono", 12, FlxColor.YELLOW, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			dbg.alpha = 0.7;
+			dbg.scrollFactor.set(0, 0);
+			add(dbg);
+		}
 
 		tweenColor(FlxColor.fromHSL(180, 1, 0.5));
 		if (colorTweens != null)
@@ -325,25 +365,72 @@ class SkinsState extends MusicBeatState
 		ready = true;
 	}
 
-	function makeButton(x:Float, y:Float, w:Int, h:Int):FlxSprite
+	var animateLog:String = '';
+
+	/**
+	 * Creates a Flash/Animate atlas sprite (crowd, speakers, gf...) WITHOUT hard-linking the class,
+	 * so the file still compiles on engines where FlxAnimate is named differently.
+	 * Returns null (and fills animateLog) when it can't be created.
+	 */
+	function makeAnimate(x:Float, y:Float, folder:String, symbol:String, scroll:Float):FlxSprite
 	{
-		var b = new FlxSprite(x, y);
-		b.makeGraphic(w, h, FlxColor.WHITE);
-		b.color = FlxColor.fromRGB(40, 40, 40);
-		b.alpha = 0.85;
-		b.scrollFactor.set(0, 0);
-		add(b);
-		return b;
+		try
+		{
+			var animCls:Class<Dynamic> = Type.resolveClass('flxanimate.FlxAnimate');
+			if (animCls == null)
+			{
+				animateLog += 'FlxAnimate class not found\n';
+				return null;
+			}
+
+			var pathsCls:Class<Dynamic> = Type.resolveClass('backend.Paths');
+			if (pathsCls == null) pathsCls = Type.resolveClass('Paths');
+			var loader:Dynamic = (pathsCls != null) ? Reflect.field(pathsCls, 'loadAnimateAtlas') : null;
+			if (loader == null)
+			{
+				animateLog += 'Paths.loadAnimateAtlas not found\n';
+				return null;
+			}
+
+			var spr:Dynamic = null;
+			try { spr = Type.createInstance(animCls, [x, y, null, null]); }
+			catch (e:Dynamic) { spr = Type.createInstance(animCls, [x, y]); }
+
+			try { Reflect.callMethod(pathsCls, loader, [spr, folder, null, null]); }
+			catch (e:Dynamic) { Reflect.callMethod(pathsCls, loader, [spr, folder]); }
+
+			spr.antialiasing = ClientPrefs.data.antialiasing;
+			spr.anim.addBySymbol('beat', symbol, 24, true);
+			spr.anim.play('beat');
+			spr.scrollFactor.set(scroll, scroll);
+			add(spr);
+			return cast spr;
+		}
+		catch (e:Dynamic)
+		{
+			animateLog += folder + ': ' + Std.string(e) + '\n';
+		}
+		return null;
 	}
 
-	function makeButtonText(b:FlxSprite, text:String, h:Int):FlxText
+	var touchBtns:Array<{spr:FlxSprite, action:String}> = [];
+
+	function addTouchButton(letter:String, action:String, x:Float, y:Float, size:Int, color:FlxColor):Void
 	{
-		var t = new FlxText(b.x, 0, b.width, text);
-		t.setFormat("VCR OSD Mono", 26, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		t.y = b.y + (h - t.height) / 2;
+		var b = new FlxSprite(x, y);
+		b.makeGraphic(size, size, FlxColor.WHITE);
+		b.color = color;
+		b.alpha = 0.8;
+		b.scrollFactor.set(0, 0);
+		add(b);
+
+		var t = new FlxText(x, 0, size, letter);
+		t.setFormat("VCR OSD Mono", 40, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		t.y = y + (size - t.height) / 2;
 		t.scrollFactor.set(0, 0);
 		add(t);
-		return t;
+
+		touchBtns.push({spr: b, action: action});
 	}
 
 	function getEntry(i:Int):Array<String>
@@ -434,6 +521,15 @@ class SkinsState extends MusicBeatState
 			for (suffix in SKIP_SUFFICES)
 				if (StringTools.endsWith(characterName, suffix))
 					return false;
+
+			// Base game: ONLY bf, pico-playable and tankman-playable. Mods are not limited.
+			if (origin == null && modFolder == '')
+			{
+				if (characterName == 'bf') {}
+				else if ((characterName == 'pico' || characterName == 'tankman') && rightSuffix != '') {}
+				else
+					return false;
+			}
 
 			var key = characterName + '|' + modFolder;
 			if (seen.exists(key))
@@ -530,6 +626,7 @@ class SkinsState extends MusicBeatState
 	var acceptSound:FlxSound;
 	var stopUpdates:Bool = false;
 	var isExiting:Bool = false;
+	var heyWait:Float = -1;
 	var leftHoldTime:Float = 0;
 	var rightHoldTime:Float = 0;
 
@@ -560,18 +657,17 @@ class SkinsState extends MusicBeatState
 		if (character.members[0] != null)
 			character.members[0].playAnim("hey", true);
 
+		FlxTween.tween(camera, {zoom: camera.zoom + 0.15}, 0.4, {ease: FlxEase.elasticInOut});
+
+		// wait for the cheer ("hey") animation, THEN close slowly (handled in update)
 		stopUpdates = true;
-		new FlxTimer().start(1, function(_) {
-			leaveMenu();
-		});
+		heyWait = 0;
 	}
 
 	function goBack():Void
 	{
 		stopUpdates = true;
-		new FlxTimer().start(0.3, function(_) {
-			leaveMenu();
-		});
+		leaveMenu(0.5);
 	}
 
 	function flipSkin():Void
@@ -637,37 +733,37 @@ class SkinsState extends MusicBeatState
 		if (!pressed)
 			return;
 
-		final barH:Float = 100;
-
-		// bottom bar: BACK | SELECT | FLIP
-		if (py >= FlxG.height - barH)
+		// letter buttons (mobile)
+		for (tb in touchBtns)
 		{
-			final third = FlxG.width / 3;
-			if (px < third)
+			if (px >= tb.spr.x && px <= tb.spr.x + tb.spr.width && py >= tb.spr.y && py <= tb.spr.y + tb.spr.height)
 			{
-				pressButton(btnBack);
-				goBack();
+				pressButton(tb.spr);
+				doAction(tb.action);
+				return;
 			}
-			else if (px < third * 2)
-			{
-				pressButton(btnSelect);
-				acceptSkin();
-			}
-			else
-			{
-				pressButton(btnFlip);
-				flipSkin();
-			}
-			return;
 		}
 
+		final barH:Float = 100;
+
 		// middle area: left / right edges change the character
-		if (py > barH)
+		if (py > barH && py < FlxG.height - barH)
 		{
 			if (px < 260)
 				setCharacter(-1);
 			else if (px > FlxG.width - 260)
 				setCharacter(1);
+		}
+	}
+
+	function doAction(action:String):Void
+	{
+		switch (action)
+		{
+			case 'accept': acceptSkin();
+			case 'back': goBack();
+			case 'fav': toggleFavorite();
+			case 'flip': flipSkin();
 		}
 	}
 
@@ -697,6 +793,27 @@ class SkinsState extends MusicBeatState
 			rightHoldTime = 0;
 
 		camFollow.setPosition(FlxG.width / 2, FlxG.height / 2);
+
+		if (heyWait >= 0 && !isExiting)
+		{
+			heyWait += elapsed;
+
+			var c = character.members[0];
+			var done:Bool = heyWait > 2.5;
+			if (c != null && c.animation.curAnim != null && c.animation.curAnim.name == 'hey')
+			{
+				if (heyWait > 0.3 && c.animation.curAnim.finished)
+					done = true;
+			}
+			else if (heyWait > 1.0)
+				done = true; // this character has no "hey" animation
+
+			if (done)
+			{
+				heyWait = -1;
+				leaveMenu(1.4);
+			}
+		}
 
 		if (stopUpdates)
 		{
@@ -778,17 +895,24 @@ class SkinsState extends MusicBeatState
 		}
 	}
 
-	function leaveMenu()
+	function leaveMenu(fade:Float = 0.5)
 	{
+		if (isExiting) return;
 		isExiting = true;
 		camera.follow(camFollow, LOCKON, 0.01);
 
-		FlxTween.tween(blackRectangle, {alpha: 1}, 0.5, {ease: FlxEase.quadInOut});
 		blackRectangle.alpha = 0;
 		add(blackRectangle);
+		FlxTween.tween(blackRectangle, {alpha: 1}, fade, {ease: FlxEase.quadInOut});
 
-		function finishLeave()
+		if (music != null && music.playing)
+			music.fadeOut(fade, 0);
+
+		new FlxTimer().start(fade + 0.1, function(_)
 		{
+			if (music != null)
+				music.stop();
+
 			for (v in [FlxG.sound.music, FreeplayState.vocals, FreeplayState.opponentVocals])
 			{
 				if (v == null) continue;
@@ -806,15 +930,7 @@ class SkinsState extends MusicBeatState
 
 			var target:Class<Dynamic> = (backClass != null) ? backClass : MainMenuState;
 			FlxG.switchState(Type.createInstance(target, []));
-		}
-
-		if (music != null && music.playing)
-			music.fadeOut(0.5, 0, t -> {
-				music.stop();
-				finishLeave();
-			});
-		else
-			new FlxTimer().start(0.5, function(_) finishLeave());
+		});
 	}
 
 	// ------------------------------------------------------------------
@@ -966,8 +1082,12 @@ class SkinsState extends MusicBeatState
 		}
 		else
 		{
-			charSelect.text = 'SELECT';
-			charSelect.alpha = 0.9;
+			#if mobile
+			charSelect.text = 'Press A to select!';
+			#else
+			charSelect.text = 'Press ACCEPT to select!';
+			#end
+			charSelect.alpha = 0.8;
 		}
 
 		charInfo.visible = false;
