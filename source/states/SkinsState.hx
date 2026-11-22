@@ -132,7 +132,6 @@ class SkinsState extends MusicBeatState
 
 		FlxG.cameras.add(characterCamera = new FlxCamera(), false);
 		FlxG.cameras.add(hud = new FlxCamera(), false);
-		try { CustomFadeTransition.nextCamera = hud; } catch (e:Dynamic) {}
 		characterCamera.bgColor.alpha = 0;
 		hud.bgColor.alpha = 0;
 		characterCamera.zoom = 0.8;
@@ -307,7 +306,6 @@ class SkinsState extends MusicBeatState
 		#end
 
 		super.create();
-		try { CustomFadeTransition.nextCamera = hud; } catch (e:Dynamic) {}
 	}
 
 	function scanCharacters()
@@ -493,7 +491,7 @@ class SkinsState extends MusicBeatState
 				character.members[0].playAnim("hey", true);
 
 			stopUpdates = true;
-			FlxTimer.wait(1, () -> {
+			new FlxTimer().start(1, function(_) {
 				leaveMenu();
 			});
 			return;
@@ -502,7 +500,9 @@ class SkinsState extends MusicBeatState
 		if (controls.BACK)
 		{
 			stopUpdates = true;
-			FlxTimer.wait(0.3, () -> leaveMenu());
+			new FlxTimer().start(0.3, function(_) {
+				leaveMenu();
+			});
 			return;
 		}
 
