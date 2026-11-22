@@ -194,6 +194,7 @@ class FreeplayState extends MusicBeatState
 		final space:String = (controls.mobileC) ? "X" : "SPACE";
 		final control:String = (controls.mobileC) ? "C" : "CTRL";
 		final reset:String = (controls.mobileC) ? "Y" : "RESET";
+		final skinKey:String = (controls.mobileC) ? "S" : "S";
 		
 		var leText:String = Language.getPhrase("freeplay_tip", "Press {1} to listen to the Song / Press {2} to open the Gameplay Changers Menu / Press {3} to Reset your Score and Accuracy.", [space, control, reset]);
 		bottomString = leText;
@@ -242,6 +243,7 @@ class FreeplayState extends MusicBeatState
 		rebuildFilter();
 
 		addTouchPad('LEFT_FULL', 'A_B_C_X_Y_Z');
+		ensureSkinTouchButton();
 		super.create();
 	}
 
@@ -253,6 +255,7 @@ class FreeplayState extends MusicBeatState
 		// Re-add touchpad after substate (Gameplay Changers etc.)
 		removeTouchPad();
 		addTouchPad('LEFT_FULL', 'A_B_C_X_Y_Z');
+		ensureSkinTouchButton();
 	}
 
 	public function addSong(songName:String, weekNum:Int, songCharacter:String, color:Int)
@@ -402,6 +405,16 @@ class FreeplayState extends MusicBeatState
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 				MusicBeatState.switchState(new MainMenuState());
 			}
+		}
+
+		// Character skins (keyboard S / mobile S button above actions)
+		if ((FlxG.keys.justPressed.S || (touchPad != null && touchPad.buttonS != null && touchPad.buttonS.justPressed))
+			&& player != null && !player.playingMusic)
+		{
+			persistentUpdate = false;
+			FlxG.sound.play(Paths.sound('scrollMenu'), 0.4);
+			MusicBeatState.switchState(new states.SkinsState());
+			return;
 		}
 
 		if((FlxG.keys.justPressed.CONTROL || (touchPad != null && touchPad.buttonC != null && touchPad.buttonC.justPressed)) && player != null && !player.playingMusic)
@@ -579,6 +592,36 @@ class FreeplayState extends MusicBeatState
 		}
 		catch (e:Dynamic) {}
 		return null;
+	}
+
+	
+	/** Mobile S button above the action cluster — opens character skin menu. */
+	function ensureSkinTouchButton():Void
+	{
+		#if mobile
+		if (touchPad == null) return;
+		try
+		{
+			@:privateAccess
+			{
+				final sx:Float = FlxG.width - 132;
+				final sy:Float = FlxG.height - 137 - 150; // above bottom action buttons
+				if (touchPad.buttonS != null)
+				{
+					// recreate so it is in the group with correct graphic
+					if (touchPad.members.contains(touchPad.buttonS))
+						touchPad.remove(touchPad.buttonS, true);
+				}
+				touchPad.buttonS = touchPad.createButton(sx, sy, 's', 0xFF66CCFF, touchPad.buttonS != null ? touchPad.buttonS.IDs : [MobileInputID.S]);
+				touchPad.add(touchPad.buttonS);
+				touchPad.updateTrackedButtons();
+			}
+		}
+		catch (e:Dynamic)
+		{
+			trace('skin touch button: ' + e);
+		}
+		#end
 	}
 
 	function enterPlayStateFromFreeplay():Void
