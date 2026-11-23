@@ -42,7 +42,7 @@ jobs:
         run: |
           mkdir -p /home/runner/
           if [ -f /home/runner/artifacts/android/*.apk ]; then
-            mv /home/runner/artifacts/android/*.apk /home/runner/unknown-Engine-Android.apk
+            mv /home/runner/artifacts/android/*.apk /home/runner/Silence-Engine-Android.apk
           fi
 
       - name: Download iOS Build
@@ -57,7 +57,7 @@ jobs:
       - name: Move iOS IPA
         run: |
           if [ -f /home/runner/artifacts/ios/*.ipa ]; then
-            mv /home/runner/artifacts/ios/*.ipa /home/runner/unknown-Engine-IOS.ipa
+            mv /home/runner/artifacts/ios/*.ipa /home/runner/Silence-Engine-IOS.ipa
           fi
 
       - name: Publish Release
@@ -67,5 +67,5 @@ jobs:
           tag_name: "devbuild-${{ steps.get_hash.outputs.commit_hash }}"
           prerelease: true
           files: |
-            /home/runner/unknown-Engine-Android.apk
-            /home/runner/unknown-Engine-IOS.ipa
+            /home/runner/Silence-Engine-Android.apk
+            /home/runner/Silence-Engine-IOS.ipa
