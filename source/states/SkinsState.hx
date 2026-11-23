@@ -323,11 +323,11 @@ class SkinsState extends MusicBeatState
 		add(charInfo);
 
 		#if mobile
-		var tip1 = new FlxText(20, 0, 400, 'A - Select\nB - Back\nQ - Favorite skin\nC - Flip skin');
+		var tip1 = new FlxText(20, 0, 400, 'A - Select\nB - Back\nQ - Add/remove favorite\nD - Next favorite\nC - Flip skin');
 		#else
-		var tip1 = new FlxText(20, 0, 400, 'TAB - Flip skin\nQ - Favorite skin\nRESET - None');
+		var tip1 = new FlxText(20, 0, 400, 'TAB - Flip skin\nQ - Add/remove favorite\nF - Next favorite (SHIFT+F back)\nRESET - None');
 		#end
-		tip1.setFormat("VCR OSD Mono", 14, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		tip1.setFormat("VCR OSD Mono", 13, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		tip1.y = barDown.y + (barDown.height - tip1.height) / 2;
 		tip1.alpha = 0.6;
 		tip1.scrollFactor.set(0, 0);
@@ -338,11 +338,12 @@ class SkinsState extends MusicBeatState
 		final bs:Int = 72;
 		final gap:Int = 12;
 		final by:Float = barDown.y + (barDown.height - bs) / 2;
-		var bx:Float = FlxG.width - 4 * (bs + gap);
-		addTouchButton('Q', 'fav', bx, by, bs, FlxColor.fromRGB(140, 90, 220));
-		addTouchButton('C', 'flip', bx + (bs + gap), by, bs, FlxColor.fromRGB(60, 190, 80));
-		addTouchButton('B', 'back', bx + 2 * (bs + gap), by, bs, FlxColor.fromRGB(230, 190, 40));
-		addTouchButton('A', 'accept', bx + 3 * (bs + gap), by, bs, FlxColor.fromRGB(220, 50, 50));
+		var bx:Float = FlxG.width - 5 * (bs + gap);
+		addTouchButton('D', 'favjump', bx, by, bs, FlxColor.fromRGB(40, 90, 230));
+		addTouchButton('Q', 'fav', bx + (bs + gap), by, bs, FlxColor.fromRGB(140, 90, 220));
+		addTouchButton('C', 'flip', bx + 2 * (bs + gap), by, bs, FlxColor.fromRGB(60, 190, 80));
+		addTouchButton('B', 'back', bx + 3 * (bs + gap), by, bs, FlxColor.fromRGB(230, 190, 40));
+		addTouchButton('A', 'accept', bx + 4 * (bs + gap), by, bs, FlxColor.fromRGB(220, 50, 50));
 		#end
 
 		if ((animateLog != '' && !ClientPrefs.data.lowQuality) || touchLog != '')
@@ -852,8 +853,8 @@ class SkinsState extends MusicBeatState
 	{
 		if (b == null) return;
 		FlxTween.cancelTweensOf(b);
-		b.color = FlxColor.fromRGB(110, 110, 110);
-		FlxTween.color(b, 0.25, b.color, FlxColor.fromRGB(40, 40, 40));
+		b.alpha = 0.5;
+		FlxTween.tween(b, {alpha: 1}, 0.25);
 	}
 
 	function acceptSkin():Void
@@ -1039,8 +1040,64 @@ class SkinsState extends MusicBeatState
 			case 'accept': acceptSkin();
 			case 'back': goBack();
 			case 'fav': toggleFavorite();
+			case 'favjump': jumpToFavorite(1);
 			case 'flip': flipSkin();
 		}
+	}
+
+	function isFavorite(i:Int):Bool
+	{
+		var entry = getEntry(i);
+		if (entry == null || ClientPrefs.data.favSkins == null)
+			return false;
+		return ClientPrefs.data.favSkins.contains(entry[0] + ':' + entry[3]);
+	}
+
+	/** Quick access: jumps straight to the next (dir >= 0) or previous favorite skin, wrapping around. */
+	function jumpToFavorite(dir:Int = 1):Void
+	{
+		var favs:Array<Int> = [];
+		for (i in 0...charactersList.length)
+			if (isFavorite(i))
+				favs.push(i);
+
+		if (favs.length == 0)
+		{
+			charInfo.text = 'No favorite skins yet! Press Q on a skin to add it.';
+			charInfo.visible = true;
+			new FlxTimer().start(2.5, function(_) updateTexts());
+			return;
+		}
+
+		var target:Int = -2;
+		if (dir >= 0)
+		{
+			for (f in favs)
+				if (f > curCharacter) { target = f; break; }
+			if (target == -2)
+				target = favs[0];
+		}
+		else
+		{
+			var k:Int = favs.length - 1;
+			while (k >= 0)
+			{
+				if (favs[k] < curCharacter) { target = favs[k]; break; }
+				k--;
+			}
+			if (target == -2)
+				target = favs[favs.length - 1];
+		}
+
+		if (target == curCharacter)
+		{
+			charInfo.text = 'This is your only favorite skin.';
+			charInfo.visible = true;
+			new FlxTimer().start(2, function(_) updateTexts());
+			return;
+		}
+
+		setCharacter(target - curCharacter);
 	}
 
 	override function update(elapsed:Float)
@@ -1137,6 +1194,9 @@ class SkinsState extends MusicBeatState
 
 		if (FlxG.keys.justPressed.TAB)
 			flipSkin();
+
+		if (FlxG.keys.justPressed.F)
+			jumpToFavorite(FlxG.keys.pressed.SHIFT ? -1 : 1);
 
 		// Favorite (Q or fav bind)
 		var favPressed = FlxG.keys.justPressed.Q;
