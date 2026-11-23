@@ -606,7 +606,13 @@ class FreeplayState extends MusicBeatState
 			@:privateAccess
 			{
 				final sx:Float = FlxG.width - 132;
-				final sy:Float = FlxG.height - 137 - 150; // above bottom action buttons
+				// Sit clearly above Z / action cluster (was overlapping Z)
+				var sy:Float = FlxG.height - 137 - 280;
+				if (touchPad.buttonZ != null && touchPad.buttonZ.exists)
+					sy = touchPad.buttonZ.y - 140;
+				else if (touchPad.buttonY != null && touchPad.buttonY.exists)
+					sy = touchPad.buttonY.y - 140;
+				if (sy < 40) sy = 40;
 				if (touchPad.buttonS != null)
 				{
 					// recreate so it is in the group with correct graphic
