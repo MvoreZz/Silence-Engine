@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Mobile Builds"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  releaser:
+    name: Releaser
+    runs-on: ubuntu-latest
+    permissions: write-all
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Commit Hash
+        id: get_hash
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            # workflow_run tetiklendiyse build'in alındığı commit hash'ini al
+            COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+            echo "commit_hash=$(echo $COMMIT_SHA | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          else
+            echo "commit_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download Android Build
+        uses: actions/download-artifact@v4
+        with:
+          name: androidBuild
+          run_id: ${{ github.event.workflow_run.id }}
+          path: /home/runner/artifacts/android
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Move Android APK
+        run: |
+          mkdir -p /home/runner/
+          if [ -f /home/runner/artifacts/android/*.apk ]; then
+            mv /home/runner/artifacts/android/*.apk /home/runner/unknown-Engine-Android.apk
+          fi
+
+      - name: Download iOS Build
+        uses: actions/download-artifact@v4
+        with:
+          name: iOSBuild
+          run_id: ${{ github.event.workflow_run.id }}
+          path: /home/runner/artifacts/ios
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Move iOS IPA
+        run: |
+          if [ -f /home/runner/artifacts/ios/*.ipa ]; then
+            mv /home/runner/artifacts/ios/*.ipa /home/runner/unknown-Engine-IOS.ipa
+          fi
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DevBuild ${{ steps.get_hash.outputs.commit_hash }}"
+          tag_name: "devbuild-${{ steps.get_hash.outputs.commit_hash }}"
+          prerelease: true
+          files: |
+            /home/runner/unknown-Engine-Android.apk
+            /home/runner/unknown-Engine-IOS.ipa
