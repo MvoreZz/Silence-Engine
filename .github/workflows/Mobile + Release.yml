@@ -1,10 +1,10 @@
-name: Mobile Builds
+name: Mobile + Release 
 
 on:
   workflow_dispatch:
 
 env:
-  PROJECT_NAME: Silence Engine
+  PROJECT_NAME: SilenceEngine
   VERSION: 1.2.0
   HAXE_VERSION: 4.3.7
 
@@ -177,12 +177,44 @@ jobs:
           cp -r "$APP_NAME" Payload/
           zip -r ${{ env.PROJECT_NAME }}-release.ipa Payload
 
-          mkdir -p ../../../../staging-ios
-          cp ${{ env.PROJECT_NAME }}-release.ipa ../../../../staging-ios/
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: iOSBuild
-          path: staging-ios/*
+          path: export/release/ios/build/Release-iphoneos/*-release.ipa
           if-no-files-found: error
+
+  Releaser:
+    name: Releaser
+    needs: [get-commit-hash, build-android, build-ios]
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    steps:
+      - name: Download Android Build
+        uses: actions/download-artifact@v4
+        with:
+          name: androidBuild
+          path: /home/runner/artifacts/android
+
+      - name: Move Android APK
+        run: mv /home/runner/artifacts/android/*.apk /home/runner/Silence-Engine-Android.apk
+
+      - name: Download iOS Build
+        uses: actions/download-artifact@v4
+        with:
+          name: iOSBuild
+          path: /home/runner/artifacts/ios
+
+      - name: Move iOS IPA
+        run: mv /home/runner/artifacts/ios/*.ipa /home/runner/Silence-Engine-IOS.ipa
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "DevBuild ${{ needs.get-commit-hash.outputs.commit_hash }}"
+          tag_name: "devbuild-${{ needs.get-commit-hash.outputs.commit_hash }}"
+          prerelease: true
+          files: |
+            /home/runner/Silence-Engine-Android.apk
+            /home/runner/Silence-Engine-IOS.ipa
