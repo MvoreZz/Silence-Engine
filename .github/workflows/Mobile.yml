@@ -1,4 +1,4 @@
-name: Mobile
+name: Mobile Builds
 
 on:
   workflow_dispatch:
@@ -177,9 +177,12 @@ jobs:
           cp -r "$APP_NAME" Payload/
           zip -r ${{ env.PROJECT_NAME }}-release.ipa Payload
 
+          mkdir -p ../../../../staging-ios
+          cp ${{ env.PROJECT_NAME }}-release.ipa ../../../../staging-ios/
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: iOSBuild
-          path: export/release/ios/build/Release-iphoneos/*-release.ipa
+          path: staging-ios/*
           if-no-files-found: error
