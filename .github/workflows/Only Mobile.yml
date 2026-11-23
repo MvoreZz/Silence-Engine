@@ -1,0 +1,220 @@
+name: Only Mobile 
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_NAME: SilenceEngine
+  VERSION: 1.2.0
+  HAXE_VERSION: 4.3.7
+
+jobs:
+  get-commit-hash:
+    name: Get Commit Hash
+    runs-on: ubuntu-latest
+    outputs:
+      commit_hash: ${{ steps.get_hash.outputs.commit_hash }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Short Commit Hash
+        id: get_hash
+        run: echo "commit_hash=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+  build-android:
+    name: Build Android
+    needs: get-commit-hash
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@master
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Setup Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Install Libraries
+        run: |
+          sh ./setup/unix.sh
+          haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
+          haxelib git hxCodec https://github.com/polybiusproxy/hxCodec --quiet || true
+          echo "=== Haxe Version ==="
+          haxe -version
+          echo "=== Haxelib List (before force set) ==="
+          haxelib list
+
+      - name: Force correct haxelib versions
+        run: |
+          haxelib set hxcpp git
+          haxelib set lime git
+          haxelib set flixel git
+          haxelib set openfl 9.4.1
+          haxelib set HtmlParser 3.4.0
+          haxelib set SScript git
+          haxelib set hxCodec git
+          echo "=== Haxelib List (after force set) ==="
+          haxelib list
+
+      - name: Configure Android
+        shell: bash
+        run: |
+          haxelib run lime config ANDROID_SDK $ANDROID_HOME
+          haxelib run lime config ANDROID_NDK_ROOT ${{ steps.setup-ndk.outputs.ndk-path }}
+
+          if [ "$RUNNER_ARCH" = "ARM64" ]; then
+            echo "Using ARM64 Java"
+            haxelib run lime config JAVA_HOME $JAVA_HOME_17_arm64
+          else
+            echo "Using X64 Java"
+            haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
+          fi
+
+          haxelib run lime config ANDROID_SETUP true
+
+      - name: Compile
+        run: haxelib run lime build android -release -final -ONLY_ARM64 -D officialBuild
+
+      - name: Stage Android APK
+        run: |
+          mkdir -p staging
+          find export/release/android -name "*.apk" -exec cp {} staging/ \;
+          cd staging
+          for f in *.apk; do
+            [ -f "$f" ] && mv "$f" "${{ env.PROJECT_NAME }}-release.apk"
+          done
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: androidBuild
+          path: staging/*
+          if-no-files-found: error
+
+  build-ios:
+    name: Build iOS
+    needs: get-commit-hash
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@master
+        with:
+          haxe-version: ${{ env.HAXE_VERSION }}
+
+      - name: Install Libraries
+        run: |
+          sh ./setup/unix.sh
+          haxelib git SScript https://github.com/DeveloperPorting-Stuff/SScript --quiet || true
+          haxelib git hxCodec https://github.com/SPLCoding/hxCodec-but-it-works-xd.git --quiet || true
+          echo "=== Haxe Version ==="
+          haxe -version
+          echo "=== Haxelib List (before force set) ==="
+          haxelib list
+
+      - name: Force correct haxelib versions
+        run: |
+          haxelib set hxcpp git
+          haxelib set lime git
+          haxelib set flixel git
+          haxelib set openfl 9.4.1
+          haxelib set HtmlParser 3.4.0
+          haxelib set SScript git
+          haxelib set hxCodec git
+          echo "=== Haxelib List (after force set) ==="
+          haxelib list
+
+      - name: Patch hxcpp for macOS 15 / Xcode 16
+        shell: bash
+        run: |
+          ZUTIL="$HOME/haxelib/hxcpp/git/project/thirdparty/zlib-1.2.13/zutil.h"
+
+          if [ ! -f "$ZUTIL" ]; then
+            echo "zutil.h not found: $ZUTIL"
+            exit 1
+          fi
+
+          perl -0pi -e 's/^[ \t]*#\s*define\s+fdopen\(fd,mode\)\s+NULL.*\R//m' "$ZUTIL"
+
+          echo "=== fdopen check after patch ==="
+          grep -n "fdopen" "$ZUTIL" || true
+
+      - name: Clean iOS
+        run: haxelib run lime clean ios || true
+
+      - name: Compile
+        run: haxelib run lime build ios -release -final -nosign -D officialBuild
+
+      - name: Make IPA
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+        run: |
+          brew install ldid
+          cd export/release/ios/build/Release-iphoneos
+          APP_NAME=$(ls -d *.app | head -n 1)
+          if [ -z "$APP_NAME" ]; then
+            echo "Compiled .app file not found!"
+            exit 1
+          fi
+          echo "Found Application: $APP_NAME"
+          
+          ENTITLEMENTS_PATH=$(find ../../../ -name "*.entitlements" | head -n 1)
+          if [ -n "$ENTITLEMENTS_PATH" ]; then
+            ldid -S"$ENTITLEMENTS_PATH" "$APP_NAME/$(basename "$APP_NAME" .app)" || true
+          fi
+
+          mkdir -p Payload
+          cp -r "$APP_NAME" Payload/
+          zip -r ${{ env.PROJECT_NAME }}-release.ipa Payload
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOSBuild
+          path: export/release/ios/build/Release-iphoneos/*-release.ipa
+          if-no-files-found: error
+
+ #  Releaser:
+#    name: Releaser
+#    needs: [get-commit-hash, build-android, build-ios]
+#    runs-on: ubuntu-latest
+#    permissions: write-all
+#
+#    steps:
+#      - name: Download Android Build
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: androidBuild
+#          path: /home/runner/artifacts/android
+#
+#      - name: Move Android APK
+#        run: mv /home/runner/artifacts/android/*.apk /home/runner/Unknown-Engine-Android.apk
+#
+#      - name: Download iOS Build
+#        uses: actions/download-artifact@v4
+#        with:
+#          name: iOSBuild
+#          path: /home/runner/artifacts/ios
+#
+#      - name: Move iOS IPA
+#        run: mv /home/runner/artifacts/ios/*.ipa /home/runner/Unknown-Engine-IOS.ipa
+#
+#      - name: Publish Release
+#        uses: softprops/action-gh-release@v2
+#        with:
+#          name: "DevBuild ${{ needs.get-commit-hash.outputs.commit_hash }}"
+#          tag_name: "devbuild-${{ needs.get-commit-hash.outputs.commit_hash }}"
+#          prerelease: true
+#          files: |
+#            /home/runner/Unknown-Engine-Android.apk
+#            /home/runner/Unknown-Engine-IOS.ipa
