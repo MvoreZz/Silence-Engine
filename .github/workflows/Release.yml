@@ -22,7 +22,6 @@ jobs:
         id: get_hash
         run: |
           if [ "${{ github.event_name }}" == "workflow_run" ]; then
-            # workflow_run tetiklendiyse build'in alındığı commit hash'ini al
             COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
             echo "commit_hash=$(echo $COMMIT_SHA | cut -c1-7)" >> "$GITHUB_OUTPUT"
           else
