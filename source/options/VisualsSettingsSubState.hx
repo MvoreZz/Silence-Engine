@@ -85,14 +85,14 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 			BOOL);
 		addOption(option);
 
-		var option:Option = new Option('Hide Errors',
+		var option:Option = new Option('Hide Errors (Debug Off)',
 			'If checked, hides on-screen script/debug error text.\nUse this to hide Lua/HScript error spam while playing.',
 			'hideErrors',
 			BOOL);
 		addOption(option);
 
 		var option:Option = new Option('Smooth Health Bar',
-			'If checked, health bar moves smoothly\ninstead of jumping instantly.',
+			'If checked, health bar moves smoothly (P-Slice style)\ninstead of jumping instantly.',
 			'smoothHealthBar',
 			BOOL);
 		addOption(option);
@@ -235,6 +235,8 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 
 	function onChangeNoteSkin()
 	{
+		// Rebuild RGB palettes so Chip/Future (and any skin) get correct per-column colors
+		Note.globalRgbShaders = [];
 		notes.forEachAlive(function(note:StrumNote) {
 			changeNoteSkin(note);
 			note.centerOffsets();
@@ -247,10 +249,31 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		var skin:String = Note.defaultNoteSkin;
 		var customSkin:String = skin + Note.getNoteSkinPostfix();
 		if(Paths.fileExists('images/$customSkin.png', IMAGE)) skin = customSkin;
+		else if(Paths.fileExists('images/noteSkins/' + ClientPrefs.data.noteSkin + '.png', IMAGE))
+			skin = 'noteSkins/' + ClientPrefs.data.noteSkin;
 
-		note.texture = skin; //Load texture and anims
+		note.texture = skin;
 		note.reloadNote();
+
+		// Re-bind RGB for this column (prevents all notes going red)
+		var rgbList = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel : ClientPrefs.data.arrowRGB;
+		var idx:Int = Std.int(Math.abs(note.ID) % 4);
+		if (rgbList != null && rgbList.length > 0)
+		{
+			var arr = rgbList[idx % rgbList.length];
+			if (arr != null && arr.length >= 3 && note.rgbShader != null)
+			{
+				note.rgbShader.r = arr[0];
+				note.rgbShader.g = arr[1];
+				note.rgbShader.b = arr[2];
+			}
+		}
+		if (note.rgbShader != null)
+			note.rgbShader.enabled = (ClientPrefs.data.noteSkin != ClientPrefs.defaultData.noteSkin);
+
 		note.playAnim('static');
+		if (note.rgbShader != null && ClientPrefs.data.noteSkin != ClientPrefs.defaultData.noteSkin)
+			note.rgbShader.enabled = true; // Chip/Future need RGB even on static
 	}
 
 	function onChangeSplashSkin()
