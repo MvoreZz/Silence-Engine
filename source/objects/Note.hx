@@ -96,15 +96,6 @@ class Note extends FlxSprite
 	public static var SUSTAIN_SIZE:Int = 44;
 	public static var swagWidth:Float = 160 * 0.7;
 	public static var colArray:Array<String> = ['purple', 'blue', 'green', 'red'];
-
-
-
-
-
-	public static function colToIndex(col:String):Int {
-		if (col == 'odd') return colArray.contains('odd') ? 0 : 1;
-		return ['purple', 'blue', 'green', 'red'].indexOf(col);
-	}
 	public static var defaultNoteSkin(default, never):String = 'noteSkins/NOTE_assets';
 
 	public var noteSplashData:NoteSplashData = {
@@ -182,12 +173,20 @@ class Note extends FlxSprite
 
 	public function defaultRGB()
 	{
-		var arr:Array<FlxColor> = PlayState.isPixelStage ? ClientPrefs.data.arrowRGBPixel[noteData] : ClientPrefs.data.arrowRGB[noteData];
-		if (arr != null && noteData > -1 && noteData <= arr.length && rgbShader != null)
+		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
+		if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
+
+		if (arr != null && noteData > -1 && noteData <= arr.length)
 		{
 			rgbShader.r = arr[0];
 			rgbShader.g = arr[1];
 			rgbShader.b = arr[2];
+		}
+		else
+		{
+			rgbShader.r = 0xFFFF0000;
+			rgbShader.g = 0xFF00FF00;
+			rgbShader.b = 0xFF0000FF;
 		}
 	}
 
@@ -267,9 +266,11 @@ class Note extends FlxSprite
 			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
 			texture = '';
 
-			x += (Note.swagWidth * noteData);
-			if(!isSustainNote && noteData > -1 && noteData < colArray.length) {
-				animation.play(colArray[noteData] + 'Scroll');
+			x += swagWidth * (noteData);
+			if(!isSustainNote && noteData < colArray.length) { //Doing this 'if' check to fix the warnings on Senpai songs
+				var animToPlay:String = '';
+				animToPlay = colArray[noteData % colArray.length];
+				animation.play(animToPlay + 'Scroll');
 			}
 		}
 
@@ -333,23 +334,24 @@ class Note extends FlxSprite
 		{
 			var newRGB:RGBPalette = new RGBPalette();
 			var arr:Array<FlxColor> = (!PlayState.isPixelStage) ? ClientPrefs.data.arrowRGB[noteData] : ClientPrefs.data.arrowRGBPixel[noteData];
+			
 			if (arr != null && noteData > -1 && noteData <= arr.length)
 			{
 				newRGB.r = arr[0];
 				newRGB.g = arr[1];
 				newRGB.b = arr[2];
 			}
-			else if (noteData > -1)
+			else
 			{
-				newRGB.r = 0xFFC24B99;
-				newRGB.g = 0xFFFFFFFF;
-				newRGB.b = 0xFF3C1B62;
+				newRGB.r = 0xFFFF0000;
+				newRGB.g = 0xFF00FF00;
+				newRGB.b = 0xFF0000FF;
 			}
+			
 			globalRgbShaders[noteData] = newRGB;
 		}
 		return globalRgbShaders[noteData];
 	}
-
 
 	var _lastNoteOffX:Float = 0;
 	static var _lastValidChecked:String; //optimization
@@ -366,14 +368,7 @@ class Note extends FlxSprite
 			if(skin == null || skin.length < 1)
 				skin = defaultNoteSkin + postfix;
 		}
-		// Keep RGB on for noteSkins (Default/Chip/Future); only force-off when song disables it
-		if (rgbShader != null)
-		{
-			if (PlayState.SONG != null && PlayState.SONG.disableNoteRGB)
-				rgbShader.enabled = false;
-			else
-				rgbShader.enabled = true;
-		}
+		else rgbShader.enabled = false;
 
 		var animName:String = null;
 		if(animation.curAnim != null) {
@@ -443,7 +438,7 @@ class Note extends FlxSprite
 
 		if (isSustainNote)
 		{
-			attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true);
+			attemptToAddAnimationByPrefix('purpleholdend', 'pruple end hold', 24, true); // this fixes some retarded typo from the original note .FLA
 			animation.addByPrefix(colArray[noteData] + 'holdend', colArray[noteData] + ' hold end', 24, true);
 			animation.addByPrefix(colArray[noteData] + 'hold', colArray[noteData] + ' hold piece', 24, true);
 		}
@@ -452,8 +447,6 @@ class Note extends FlxSprite
 		setGraphicSize(Std.int(width * 0.7));
 		updateHitbox();
 	}
-
-
 
 	function loadPixelNoteAnims() {
 		if (colArray[noteData] == null)
@@ -480,12 +473,7 @@ class Note extends FlxSprite
 	{
 		super.update(elapsed);
 
-		// Play Opponent (Psych Online): player-hittable notes use timing window via isPlayerNote, not only mustPress
-		var hitByPlayer:Bool = mustPress;
-		if (states.PlayState.instance != null)
-			hitByPlayer = states.PlayState.isPlayerNote(this);
-
-		if (hitByPlayer)
+		if (mustPress)
 		{
 			canBeHit = (strumTime > Conductor.songPosition - (Conductor.safeZoneOffset * lateHitMult) &&
 						strumTime < Conductor.songPosition + (Conductor.safeZoneOffset * earlyHitMult));
@@ -555,10 +543,7 @@ class Note extends FlxSprite
 	public function clipToStrumNote(myStrum:StrumNote)
 	{
 		var center:Float = myStrum.y + offsetY + Note.swagWidth / 2;
-		var hitByPlayer:Bool = mustPress;
-		if (states.PlayState.instance != null)
-			hitByPlayer = states.PlayState.isPlayerNote(this);
-		if((hitByPlayer || !ignoreNote) && (wasGoodHit || (prevNote.wasGoodHit && !canBeHit)))
+		if((mustPress || !ignoreNote) && (wasGoodHit || (prevNote.wasGoodHit && !canBeHit)))
 		{
 			var swagRect:FlxRect = clipRect;
 			if(swagRect == null) swagRect = new FlxRect(0, 0, frameWidth, frameHeight);
