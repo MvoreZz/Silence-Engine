@@ -1747,7 +1747,14 @@ class FunkinLua {
 		var strumNote:StrumNote = PlayState.instance.strumLineNotes.members[idx];
 		if(strumNote == null) return null;
 
-		// Fix null / bogus 0 targets from Lua that captured defaultX too early
+		// Optional PlayState.strumInitialX/Y (Reflect so this compiles even if fields missing)
+		var initX:Array<Float> = null;
+		var initY:Array<Float> = null;
+		try {
+			initX = cast Reflect.field(PlayState.instance, 'strumInitialX');
+			initY = cast Reflect.field(PlayState.instance, 'strumInitialY');
+		} catch (e:Dynamic) {}
+
 		if (data != null)
 		{
 			if (Reflect.hasField(data, 'x'))
@@ -1755,17 +1762,15 @@ class FunkinLua {
 				var tx:Dynamic = Reflect.field(data, 'x');
 				if (tx == null || (Std.isOfType(tx, Float) && Math.isNaN(tx)))
 				{
-					if (PlayState.instance.strumInitialX != null && idx < PlayState.instance.strumInitialX.length)
-						Reflect.setField(data, 'x', PlayState.instance.strumInitialX[idx]);
+					if (initX != null && idx < initX.length)
+						Reflect.setField(data, 'x', initX[idx]);
 					else
 						return null;
 				}
 				else if (Std.isOfType(tx, Float) && Math.abs(cast(tx, Float)) < 0.5 && Math.abs(strumNote.x) > 50
-					&& PlayState.instance.strumInitialX != null && idx < PlayState.instance.strumInitialX.length
-					&& Math.abs(PlayState.instance.strumInitialX[idx]) > 50)
+					&& initX != null && idx < initX.length && Math.abs(initX[idx]) > 50)
 				{
-					// Lua asked for ~0 but real default is on-screen — use snapshot (corner bug)
-					Reflect.setField(data, 'x', PlayState.instance.strumInitialX[idx]);
+					Reflect.setField(data, 'x', initX[idx]);
 				}
 			}
 			if (Reflect.hasField(data, 'y'))
@@ -1773,8 +1778,8 @@ class FunkinLua {
 				var ty:Dynamic = Reflect.field(data, 'y');
 				if (ty == null || (Std.isOfType(ty, Float) && Math.isNaN(ty)))
 				{
-					if (PlayState.instance.strumInitialY != null && idx < PlayState.instance.strumInitialY.length)
-						Reflect.setField(data, 'y', PlayState.instance.strumInitialY[idx]);
+					if (initY != null && idx < initY.length)
+						Reflect.setField(data, 'y', initY[idx]);
 					else
 						return null;
 				}
