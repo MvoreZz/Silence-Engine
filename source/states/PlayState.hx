@@ -268,85 +268,6 @@ class PlayState extends MusicBeatState
 	public function getOppChar():Character
 		return playsAsBF() ? dad : boyfriend;
 
-	/**
-	 * Builds a character. The skin picked in SkinsState (ClientPrefs.data.currentSkin =
-	 * [name, leftSuffix, rightSuffix, modFolder]) replaces ONLY the character you play:
-	 * BF in normal mode, Dad in Play Opponent. Dad side uses the left suffix, BF side the right one.
-	 */
-	var skinApplied:Bool = false;
-	var skinModDir:String = '';
-	var skinBaseName:String = '';
-
-	/** Does images/icons/<name> (or icon-<name>) exist for the current mod directory? */
-	function healthIconExists(name:String):Bool
-	{
-		if (name == null || name == '') return false;
-		try
-		{
-			if (Paths.image('icons/' + name) != null) return true;
-			if (Paths.image('icons/icon-' + name) != null) return true;
-		}
-		catch (e:Dynamic) {}
-		return false;
-	}
-
-	/**
-	 * Health icon for a character. A skin from a mod keeps its icons inside THAT mod's folder, so while the
-	 * icon is built the skin's mod directory is active (otherwise the icon is not found and shows nothing).
-	 * Falls back to the skin's base name, then to the normal lookup.
-	 */
-	function makeHealthIcon(char:Character, isPlayerIcon:Bool, isDadSlot:Bool):HealthIcon
-	{
-		var usesSkin:Bool = skinApplied && (isDadSlot == opponentMode);
-		var prevMod:String = Mods.currentModDirectory;
-		var iconName:String = char.healthIcon;
-
-		if (usesSkin)
-		{
-			Mods.currentModDirectory = skinModDir;
-			if (!healthIconExists(iconName))
-			{
-				if (healthIconExists(skinBaseName)) iconName = skinBaseName;
-				else if (healthIconExists(char.curCharacter)) iconName = char.curCharacter;
-			}
-		}
-
-		var icon:HealthIcon = new HealthIcon(iconName, isPlayerIcon);
-		Mods.currentModDirectory = prevMod;
-		return icon;
-	}
-
-	function createSkinnedCharacter(chartName:String, forDad:Bool, isPlayerFlag:Bool):Character
-	{
-		var skin:Array<String> = ClientPrefs.data.currentSkin;
-		var yourSlotIsDad:Bool = opponentMode;
-
-		if (skin != null && skin.length >= 4 && skin[0] != null && skin[0] != '' && forDad == yourSlotIsDad)
-		{
-			var suffix:String = forDad ? skin[1] : skin[2];
-			var skinName:String = skin[0] + (suffix == null ? '' : suffix);
-
-			var prevMod:String = Mods.currentModDirectory;
-			try
-			{
-				Mods.currentModDirectory = (skin[3] == null) ? '' : skin[3];
-				var skinned:Character = isPlayerFlag ? new Character(0, 0, skinName, true) : new Character(0, 0, skinName);
-				Mods.currentModDirectory = prevMod;
-				skinApplied = true;
-				skinModDir = (skin[3] == null) ? '' : skin[3];
-				skinBaseName = skin[0];
-				return skinned;
-			}
-			catch (e:Dynamic)
-			{
-				trace('Skin "' + skinName + '" failed to load, using chart character: ' + e);
-			}
-			Mods.currentModDirectory = prevMod;
-		}
-
-		return isPlayerFlag ? new Character(0, 0, chartName, true) : new Character(0, 0, chartName);
-	}
-
 	/** Vocal track of the character YOU play (BF = vocals, Dad = opponentVocals if it exists). */
 	public function getPlayerVocals():FlxSound
 	{
@@ -631,11 +552,11 @@ class PlayState extends MusicBeatState
 			gfGroup.add(gf);
 		}
 
-		dad = createSkinnedCharacter(SONG.player2, true, false);
+		dad = new Character(0, 0, SONG.player2);
 		startCharacterPos(dad, true);
 		dadGroup.add(dad);
 
-		boyfriend = createSkinnedCharacter(SONG.player1, false, true);
+		boyfriend = new Character(0, 0, SONG.player1, true);
 		startCharacterPos(boyfriend);
 		boyfriendGroup.add(boyfriend);
 		//  Play Opponent: who is "player" character
@@ -780,13 +701,13 @@ class PlayState extends MusicBeatState
 		reloadHealthBarColors();
 		uiGroup.add(healthBar);
 
-		iconP1 = makeHealthIcon(boyfriend, true, false);
+		iconP1 = new HealthIcon(boyfriend.healthIcon, true);
 		iconP1.y = healthBar.y - 75;
 		iconP1.visible = !ClientPrefs.data.hideHud;
 		iconP1.alpha = ClientPrefs.data.healthBarAlpha;
 		uiGroup.add(iconP1);
 
-		iconP2 = makeHealthIcon(dad, false, true);
+		iconP2 = new HealthIcon(dad.healthIcon, false);
 		iconP2.y = healthBar.y - 75;
 		iconP2.visible = !ClientPrefs.data.hideHud;
 		iconP2.alpha = ClientPrefs.data.healthBarAlpha;
@@ -4498,4 +4419,3 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			FlxG.signals.preUpdate.add(checkForResync);
 	}
 }
-
