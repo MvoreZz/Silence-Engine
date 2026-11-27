@@ -268,6 +268,85 @@ class PlayState extends MusicBeatState
 	public function getOppChar():Character
 		return playsAsBF() ? dad : boyfriend;
 
+	/**
+	 * Builds a character. The skin picked in SkinsState (ClientPrefs.data.currentSkin =
+	 * [name, leftSuffix, rightSuffix, modFolder]) replaces ONLY the character you play:
+	 * BF in normal mode, Dad in Play Opponent. Dad side uses the left suffix, BF side the right one.
+	 */
+	var skinApplied:Bool = false;
+	var skinModDir:String = '';
+	var skinBaseName:String = '';
+
+	/** Does images/icons/<name> (or icon-<name>) exist for the current mod directory? */
+	function healthIconExists(name:String):Bool
+	{
+		if (name == null || name == '') return false;
+		try
+		{
+			if (Paths.image('icons/' + name) != null) return true;
+			if (Paths.image('icons/icon-' + name) != null) return true;
+		}
+		catch (e:Dynamic) {}
+		return false;
+	}
+
+	/**
+	 * Health icon for a character. A skin from a mod keeps its icons inside THAT mod's folder, so while the
+	 * icon is built the skin's mod directory is active (otherwise the icon is not found and shows nothing).
+	 * Falls back to the skin's base name, then to the normal lookup.
+	 */
+	function makeHealthIcon(char:Character, isPlayerIcon:Bool, isDadSlot:Bool):HealthIcon
+	{
+		var usesSkin:Bool = skinApplied && (isDadSlot == opponentMode);
+		var prevMod:String = Mods.currentModDirectory;
+		var iconName:String = char.healthIcon;
+
+		if (usesSkin)
+		{
+			Mods.currentModDirectory = skinModDir;
+			if (!healthIconExists(iconName))
+			{
+				if (healthIconExists(skinBaseName)) iconName = skinBaseName;
+				else if (healthIconExists(char.curCharacter)) iconName = char.curCharacter;
+			}
+		}
+
+		var icon:HealthIcon = new HealthIcon(iconName, isPlayerIcon);
+		Mods.currentModDirectory = prevMod;
+		return icon;
+	}
+
+	function createSkinnedCharacter(chartName:String, forDad:Bool, isPlayerFlag:Bool):Character
+	{
+		var skin:Array<String> = ClientPrefs.data.currentSkin;
+		var yourSlotIsDad:Bool = opponentMode;
+
+		if (skin != null && skin.length >= 4 && skin[0] != null && skin[0] != '' && forDad == yourSlotIsDad)
+		{
+			var suffix:String = forDad ? skin[1] : skin[2];
+			var skinName:String = skin[0] + (suffix == null ? '' : suffix);
+
+			var prevMod:String = Mods.currentModDirectory;
+			try
+			{
+				Mods.currentModDirectory = (skin[3] == null) ? '' : skin[3];
+				var skinned:Character = isPlayerFlag ? new Character(0, 0, skinName, true) : new Character(0, 0, skinName);
+				Mods.currentModDirectory = prevMod;
+				skinApplied = true;
+				skinModDir = (skin[3] == null) ? '' : skin[3];
+				skinBaseName = skin[0];
+				return skinned;
+			}
+			catch (e:Dynamic)
+			{
+				trace('Skin "' + skinName + '" failed to load, using chart character: ' + e);
+			}
+			Mods.currentModDirectory = prevMod;
+		}
+
+		return isPlayerFlag ? new Character(0, 0, chartName, true) : new Character(0, 0, chartName);
+	}
+
 	/** Vocal track of the character YOU play (BF = vocals, Dad = opponentVocals if it exists). */
 	public function getPlayerVocals():FlxSound
 	{
@@ -552,11 +631,11 @@ class PlayState extends MusicBeatState
 			gfGroup.add(gf);
 		}
 
-		dad = new Character(0, 0, SONG.player2);
+		dad = createSkinnedCharacter(SONG.player2, true, false);
 		startCharacterPos(dad, true);
 		dadGroup.add(dad);
 
-		boyfriend = new Character(0, 0, SONG.player1, true);
+		boyfriend = createSkinnedCharacter(SONG.player1, false, true);
 		startCharacterPos(boyfriend);
 		boyfriendGroup.add(boyfriend);
 		//  Play Opponent: who is "player" character
@@ -701,13 +780,13 @@ class PlayState extends MusicBeatState
 		reloadHealthBarColors();
 		uiGroup.add(healthBar);
 
-		iconP1 = new HealthIcon(boyfriend.healthIcon, true);
+		iconP1 = makeHealthIcon(boyfriend, true, false);
 		iconP1.y = healthBar.y - 75;
 		iconP1.visible = !ClientPrefs.data.hideHud;
 		iconP1.alpha = ClientPrefs.data.healthBarAlpha;
 		uiGroup.add(iconP1);
 
-		iconP2 = new HealthIcon(dad.healthIcon, false);
+		iconP2 = makeHealthIcon(dad, false, true);
 		iconP2.y = healthBar.y - 75;
 		iconP2.visible = !ClientPrefs.data.hideHud;
 		iconP2.alpha = ClientPrefs.data.healthBarAlpha;
@@ -803,6 +882,39 @@ class PlayState extends MusicBeatState
 		resetRPC();
 
 		stagesFunc(function(stage:BaseStage) stage.createPost());
+
+		// Strums before onCreatePost so Lua onCreatePost can read real X/Y (noteTween defaultX).
+		if (!strumsGenerated)
+		{
+			var prevSkip:Bool = skipArrowStartTween;
+			skipArrowStartTween = true;
+			generateStaticArrows(0);
+			generateStaticArrows(1);
+			skipArrowStartTween = prevSkip;
+			applyVsliceStrumLayout();
+			snapshotStrumPositions();
+			strumsGenerated = true;
+			for (spr in strumLineNotes)
+				if (spr != null) spr.alpha = 0;
+
+			for (i in 0...playerStrums.length)
+			{
+				if (playerStrums.members[i] != null)
+				{
+					setOnScripts('defaultPlayerStrumX' + i, playerStrums.members[i].x);
+					setOnScripts('defaultPlayerStrumY' + i, playerStrums.members[i].y);
+				}
+			}
+			for (i in 0...opponentStrums.length)
+			{
+				if (opponentStrums.members[i] != null)
+				{
+					setOnScripts('defaultOpponentStrumX' + i, opponentStrums.members[i].x);
+					setOnScripts('defaultOpponentStrumY' + i, opponentStrums.members[i].y);
+				}
+			}
+		}
+
 		callOnScripts('onCreatePost');
 		
 		var splash:NoteSplash = new NoteSplash();
@@ -1194,9 +1306,43 @@ class PlayState extends MusicBeatState
 			if (skipCountdown || startOnTime > 0) skipArrowStartTween = true;
 
 			canPause = true;
-			generateStaticArrows(0);
-			generateStaticArrows(1);
+			if (!strumsGenerated)
+			{
+				generateStaticArrows(0);
+				generateStaticArrows(1);
+				strumsGenerated = true;
+			}
 			applyVsliceStrumLayout();
+			snapshotStrumPositions();
+			if (!skipArrowStartTween)
+			{
+				for (i in 0...strumLineNotes.length)
+				{
+					var babyArrow:StrumNote = strumLineNotes.members[i];
+					if (babyArrow == null) continue;
+					var isPlayerSide:Bool = playerStrums.members.indexOf(babyArrow) >= 0;
+					var targetAlpha:Float = 1;
+					if (!isPlayerSide)
+					{
+						if (!ClientPrefs.data.opponentStrums) targetAlpha = 0;
+						else if (ClientPrefs.data.middleScroll) targetAlpha = 0.35;
+					}
+					babyArrow.alpha = 0;
+					FlxTween.tween(babyArrow, {alpha: targetAlpha}, 1, {ease: FlxEase.circOut, startDelay: 0.5 + (0.2 * (i % 4))});
+				}
+			}
+			else
+			{
+				for (babyArrow in strumLineNotes)
+				{
+					if (babyArrow == null) continue;
+					var isPlayerSide:Bool = playerStrums.members.indexOf(babyArrow) >= 0;
+					if (!isPlayerSide && !ClientPrefs.data.opponentStrums)
+						babyArrow.alpha = 0;
+					else
+						babyArrow.alpha = 1;
+				}
+			}
 			for (i in 0...playerStrums.length) {
 				setOnScripts('defaultPlayerStrumX' + i, playerStrums.members[i].x);
 				setOnScripts('defaultPlayerStrumY' + i, playerStrums.members[i].y);
@@ -1770,8 +1916,32 @@ class PlayState extends MusicBeatState
 	}
 
 	public var skipArrowStartTween:Bool = false; //for lua
+	var strumsGenerated:Bool = false;
+	/** Snapshot of strum X/Y after layout — used when Lua defaultX was captured as 0/null. */
+	public var strumInitialX:Array<Float> = [];
+	public var strumInitialY:Array<Float> = [];
 
 	/** V-Slice mobile: player strums at bottom, opponent near health bar */
+	function snapshotStrumPositions():Void
+	{
+		strumInitialX = [];
+		strumInitialY = [];
+		for (i in 0...strumLineNotes.length)
+		{
+			var s:StrumNote = strumLineNotes.members[i];
+			if (s == null)
+			{
+				strumInitialX.push(0);
+				strumInitialY.push(0);
+			}
+			else
+			{
+				strumInitialX.push(s.x);
+				strumInitialY.push(s.y);
+			}
+		}
+	}
+
 	function applyVsliceStrumLayout():Void
 	{
 		if (!ClientPrefs.data.vsliceMobileControls)
@@ -4419,3 +4589,4 @@ public function triggerEvent(eventName:String, value1:String, value2:String, str
 			FlxG.signals.preUpdate.add(checkForResync);
 	}
 }
+
