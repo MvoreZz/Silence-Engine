@@ -366,8 +366,14 @@ class Note extends FlxSprite
 			if(skin == null || skin.length < 1)
 				skin = defaultNoteSkin + postfix;
 		}
-
-		else rgbShader.enabled = false;
+		// Keep RGB on for noteSkins (Default/Chip/Future); only force-off when song disables it
+		if (rgbShader != null)
+		{
+			if (PlayState.SONG != null && PlayState.SONG.disableNoteRGB)
+				rgbShader.enabled = false;
+			else
+				rgbShader.enabled = true;
+		}
 
 		var animName:String = null;
 		if(animation.curAnim != null) {
