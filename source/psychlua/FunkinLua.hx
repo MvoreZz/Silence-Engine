@@ -1735,9 +1735,54 @@ class FunkinLua {
 	function noteTweenFunction(tag:String, note:Int, data:Dynamic, duration:Float, ease:String)
 	{
 		if(PlayState.instance == null) return null;
+		if(PlayState.instance.strumLineNotes == null || PlayState.instance.strumLineNotes.length < 1)
+			return null;
 
-		var strumNote:StrumNote = PlayState.instance.strumLineNotes.members[note % PlayState.instance.strumLineNotes.length];
+		// Clamp index (scripts often use 0-7); avoid % on empty
+		var len:Int = PlayState.instance.strumLineNotes.length;
+		var idx:Int = note;
+		if (idx < 0) idx = 0;
+		if (idx >= len) idx = idx % len;
+
+		var strumNote:StrumNote = PlayState.instance.strumLineNotes.members[idx];
 		if(strumNote == null) return null;
+
+		// Fix null / bogus 0 targets from Lua that captured defaultX too early
+		if (data != null)
+		{
+			if (Reflect.hasField(data, 'x'))
+			{
+				var tx:Dynamic = Reflect.field(data, 'x');
+				if (tx == null || (Std.isOfType(tx, Float) && Math.isNaN(tx)))
+				{
+					if (PlayState.instance.strumInitialX != null && idx < PlayState.instance.strumInitialX.length)
+						Reflect.setField(data, 'x', PlayState.instance.strumInitialX[idx]);
+					else
+						return null;
+				}
+				else if (Std.isOfType(tx, Float) && Math.abs(cast(tx, Float)) < 0.5 && Math.abs(strumNote.x) > 50
+					&& PlayState.instance.strumInitialX != null && idx < PlayState.instance.strumInitialX.length
+					&& Math.abs(PlayState.instance.strumInitialX[idx]) > 50)
+				{
+					// Lua asked for ~0 but real default is on-screen — use snapshot (corner bug)
+					Reflect.setField(data, 'x', PlayState.instance.strumInitialX[idx]);
+				}
+			}
+			if (Reflect.hasField(data, 'y'))
+			{
+				var ty:Dynamic = Reflect.field(data, 'y');
+				if (ty == null || (Std.isOfType(ty, Float) && Math.isNaN(ty)))
+				{
+					if (PlayState.instance.strumInitialY != null && idx < PlayState.instance.strumInitialY.length)
+						Reflect.setField(data, 'y', PlayState.instance.strumInitialY[idx]);
+					else
+						return null;
+				}
+			}
+			if (Reflect.hasField(data, 'angle') && Reflect.field(data, 'angle') == null) return null;
+			if (Reflect.hasField(data, 'alpha') && Reflect.field(data, 'alpha') == null) return null;
+		}
+		if (duration < 0) duration = 0;
 
 		if(tag != null)
 		{
@@ -1746,11 +1791,13 @@ class FunkinLua {
 			LuaUtils.cancelTween(tag);
 
 			var variables = MusicBeatState.getVariables();
-			variables.set(tag, FlxTween.tween(strumNote, data, duration, {ease: LuaUtils.getTweenEaseByString(ease),
+			variables.set(tag, FlxTween.tween(strumNote, data, duration, {
+				ease: LuaUtils.getTweenEaseByString(ease),
 				onComplete: function(twn:FlxTween)
 				{
 					variables.remove(tag);
-					if(PlayState.instance != null) PlayState.instance.callOnLuas('onTweenCompleted', [originalTag]);
+					if(PlayState.instance != null)
+						PlayState.instance.callOnLuas('onTweenCompleted', [originalTag]);
 				}
 			}));
 			return tag;
